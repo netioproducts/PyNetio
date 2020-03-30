@@ -72,7 +72,6 @@ class JsonDevice(Device):
             self._pass = auth_r[1]
         else:
             raise TypeError("No auth provided.")
-        print("here")
 
         # request information about the Device
 

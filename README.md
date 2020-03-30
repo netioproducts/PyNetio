@@ -6,7 +6,7 @@ python 3 Bindings for communication with NETIO Products devices
 # Usage
 Install the latest package from pip
 ```bash
-pip install --upgrade Netio
+pip install Netio
 ```
 
 Login to your device and enable JSON API
