@@ -8,3 +8,10 @@ All notable changes to this project will be documented in this file.
 ## [0.0.4] - 2020-03-30
 ### Fixed
 - Pypi distribution package
+
+## [0.0.5] - 2020-03-31
+### Fixed
+- Fix authentication error
+
+### Added
+- better communication handling

@@ -5,9 +5,7 @@ import json
 from enum import IntEnum
 from typing import List
 
-
-class CommunicationError(Exception):
-    """Communication with Device failed"""
+from Netio.exceptions import CommunicationError, AuthError
 
 
 class Device(object):
@@ -37,7 +35,7 @@ class Device(object):
     def __init__(self, *args, **kwargs):
         raise NotImplementedError("The function has to be implemented")
 
-    def _get_ouputs(self) -> List[ACTION]:
+    def _get_ouputs(self) -> List[OUTPUT]:
         """Return sorted list of all outputs in format of self.OUTPUT"""
         raise NotImplementedError("The function has to be implemented")
 
@@ -48,11 +46,11 @@ class Device(object):
         response = self._get_ouputs()
         return list(response)[id]
 
-    def set_output(self, id: int, action: int = ACTION.NOCHANGE) -> None:
+    def set_output(self, id: int, action: ACTION = ACTION.NOCHANGE) -> None:
         if self._write_access:
             self._set_state(id, action)
         else:
-            raise Exception("cannot write, without write access")
+            raise AuthError("cannot write, without write access")
 
     def __repr__(self):
         return f"<Netio {self.DeviceName} [{self.SerialNumber}]>"
@@ -66,38 +64,70 @@ class JsonDevice(Device):
         if auth_rw:
             self._user = auth_rw[0]
             self._pass = auth_rw[1]
-            _write_access = True
+            self._write_access = True
         elif auth_r:
             self._user = auth_r[0]
             self._pass = auth_r[1]
         else:
-            raise TypeError("No auth provided.")
+            raise AuthError("No auth provided.")
 
         # request information about the Device
+        r_json = self._get()
 
-        response = requests.get(self._url)
+        self.NumOutputs = r_json["Agent"]["NumOutputs"]
+        self.DeviceName = r_json["Agent"]["DeviceName"]
+        self.SerialNumber = r_json["Agent"]["SerialNumber"]
 
-        json = response.json()
+    @staticmethod
+    def _parse_response(response: requests.Response) -> dict:
+        """
+        Parse JSON response according to
+        https://www.netio-products.com/files/NETIO-M2M-API-Protocol-JSON.pdf
+        """
 
-        self.NumOutputs = json["Agent"]["NumOutputs"]
-        self.DeviceName = json["Agent"]["DeviceName"]
-        self.SerialNumber = json["Agent"]["SerialNumber"]
+        try:
+            rj = response.json()
+        except ValueError:
+            raise CommunicationError("Response does not contain valid json")
 
-    def _get_ouputs(self) -> list:
+        if response.status_code == 400:
+            raise CommunicationError('Control command syntax error')
+
+        if response.status_code == 401:
+            raise AuthError('Invalid Username or Password')
+
+        if response.status_code == 403:
+            raise AuthError('Read only credentials used')
+
+        if not response.ok:
+            raise CommunicationError("Communication with device failed")
+        return rj
+
+    def _post(self, body: dict) -> dict:
+        response = requests.post(self._url,
+                                 data=json.dumps(body),
+                                 auth=requests.auth.HTTPBasicAuth(self._user, self._pass))
+
+        return self._parse_response(response)
+
+
+    def _get(self) -> dict:
+        response = requests.get(self._url, auth=requests.auth.HTTPBasicAuth(self._user, self._pass))
+        return self._parse_response(response)
+
+
+    def _get_ouputs(self) -> List[Device.OUTPUT]:
         """
         Send empty GET request to the device.
         Parse out the output states according to specification.
         """
 
-        response = requests.get(self._url)
-
-        if not response.ok:
-            raise CommunicationError("Response is not ok.")
+        r_json = self._get()
 
         outputs = list()
 
         for o_id in range(self.NumOutputs):
-            output = response.json().get("Outputs")[o_id]
+            output = r_json.get("Outputs")[o_id]
             state = self.OUTPUT(
                 ID=output["ID"],
                 Name=output["Name"],
@@ -112,14 +142,10 @@ class JsonDevice(Device):
             outputs.append(state)
         return outputs
 
-    def _set_state(self, id: int, action) -> None:
+    def _set_state(self, id: int, action) -> dict:
 
         body = {"Outputs": [{"ID": id, "Action": action}]}
 
-        response = requests.post(self._url, data=json.dumps(body))
+        return self._post(body)
 
-        if not response.ok:
-            raise CommunicationError("Response is not ok.")
-
-        # TODO verify reponse action
-        response.json()
+        # TODO verify response action
