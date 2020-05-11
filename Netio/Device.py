@@ -57,8 +57,9 @@ class Device(object):
 
 
 class JsonDevice(Device):
-    def __init__(self, url, auth_r=None, auth_rw=None):
+    def __init__(self, url, auth_r=None, auth_rw=None, verify=None):
         self._url = url
+        self._verify = verify
 
         # read-write can do read, so we don't need read-only permission
         if auth_rw:
@@ -106,13 +107,15 @@ class JsonDevice(Device):
     def _post(self, body: dict) -> dict:
         response = requests.post(self._url,
                                  data=json.dumps(body),
-                                 auth=requests.auth.HTTPBasicAuth(self._user, self._pass))
+                                 auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
+                                 verify=self._verify)
 
         return self._parse_response(response)
 
 
     def _get(self) -> dict:
-        response = requests.get(self._url, auth=requests.auth.HTTPBasicAuth(self._user, self._pass))
+        response = requests.get(self._url, auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
+                                verify=self._verify)
         return self._parse_response(response)
 
 
