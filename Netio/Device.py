@@ -112,12 +112,11 @@ class JsonDevice(Device):
 
         return self._parse_response(response)
 
-
     def _get(self) -> dict:
-        response = requests.get(self._url, auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
+        response = requests.get(self._url,
+                                auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
                                 verify=self._verify)
         return self._parse_response(response)
-
 
     def _get_ouputs(self) -> List[Device.OUTPUT]:
         """

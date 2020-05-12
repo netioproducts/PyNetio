@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="Netio",
-    version="0.0.5",
+    version="0.0.6",
     author="Adam Verner",
     author_email="averner@netio.eu",
     license="MIT",
@@ -14,7 +14,8 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/netioproducts/PyNetio",
     install_requires=[
-        "requests"
+        "requests>=2.23",
+        "pyOpenSSL>=19.0"
     ],
     packages=["Netio"],
     classifiers=[

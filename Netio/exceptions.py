@@ -9,4 +9,3 @@ class CommunicationError(NetioException):
 
 class AuthError(NetioException):
     """Authentication missing, or invalid"""
-

@@ -15,3 +15,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - better communication handling
+
+## [0.0.6] - 2020-05-12
+### Added
+ - support for self-signed certificates
