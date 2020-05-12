@@ -3,7 +3,7 @@ import requests
 import logging
 import json
 from enum import IntEnum
-from typing import List
+from typing import Dict, List
 
 from Netio.exceptions import CommunicationError, AuthError
 
@@ -47,8 +47,11 @@ class Device(object):
         return list(response)[id]
 
     def set_output(self, id: int, action: ACTION = ACTION.NOCHANGE) -> None:
+        self.set_outputs({id: action})
+
+    def set_outputs(self, actions: Dict[int, ACTION]) -> None:
         if self._write_access:
-            self._set_state(id, action)
+            self._set_states(actions)
         else:
             raise AuthError("cannot write, without write access")
 
@@ -144,9 +147,12 @@ class JsonDevice(Device):
             outputs.append(state)
         return outputs
 
-    def _set_state(self, id: int, action) -> dict:
+    def _set_states(self, actions: dict) -> dict:
+        outputs = []
+        for id, action in actions.items():
+            outputs.append({'ID': id, 'Action': action})
 
-        body = {"Outputs": [{"ID": id, "Action": action}]}
+        body = {"Outputs": outputs}
 
         return self._post(body)
 
