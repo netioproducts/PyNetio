@@ -14,6 +14,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/netioproducts/PyNetio",
     install_requires=[
+        "PyYAML>=5.3",
         "requests>=2.23",
         "pyOpenSSL>=19.0"
     ],
@@ -26,4 +27,9 @@ setuptools.setup(
         "Programming Language :: Python :: 3.6",
     ],
     python_requires='>=3.6',
+    entry_points={
+        'console_scripts': [
+            'netio=Netio.cli:main'
+        ],
+    },
 )
