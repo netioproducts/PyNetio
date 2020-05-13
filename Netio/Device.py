@@ -43,8 +43,15 @@ class Device(object):
         raise NotImplementedError("The function has to be implemented")
 
     def get_output(self, id: int) -> OUTPUT:
-        response = self._get_ouputs()
+        response = self._get_outputs()
         return list(response)[id]
+
+    def get_outputs(self, ids: List[int]) -> List[OUTPUT]:
+        # Let's have a real collection of IDs for checking the response IDs
+        # against.
+        ids = set(ids)
+        response = self._get_outputs()
+        return [output for output in response if output.ID in ids]
 
     def set_output(self, id: int, action: ACTION = ACTION.NOCHANGE) -> None:
         self.set_outputs({id: action})
@@ -121,7 +128,7 @@ class JsonDevice(Device):
                                 verify=self._verify)
         return self._parse_response(response)
 
-    def _get_ouputs(self) -> List[Device.OUTPUT]:
+    def _get_outputs(self) -> List[Device.OUTPUT]:
         """
         Send empty GET request to the device.
         Parse out the output states according to specification.
