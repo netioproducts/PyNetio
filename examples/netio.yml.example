@@ -1,0 +1,19 @@
+#
+# Configuration example for command line interface tool.
+#
+
+device: netio.example.org
+password: 'your password here'
+
+# Chose protocol from 'https' and 'http'. The former is the default if no
+# protocol is given.
+protocol: https
+# Specify a certificate in case your devices uses a self-signed one.
+cert: netio.example.org.pem
+
+# You may override the default user 'write' with the following line:
+# user: you
+
+# In case you've got a crufty self-signed cert, you might want to disable
+# warnings from urllib with:
+# disable_urllib_warnings: true
