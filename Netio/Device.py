@@ -44,7 +44,7 @@ class Device(object):
 
     def get_output(self, id: int) -> OUTPUT:
         response = self._get_outputs()
-        return list(response)[id]
+        return next(filter(lambda output: output.ID == id, response))
 
     def get_outputs(self, ids: List[int]) -> List[OUTPUT]:
         # Let's have a real collection of IDs for checking the response IDs
