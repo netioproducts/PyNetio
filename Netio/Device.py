@@ -1,4 +1,6 @@
 import collections
+from abc import abstractmethod
+
 import requests
 import logging
 import json
@@ -10,12 +12,16 @@ from Netio.exceptions import CommunicationError, AuthError
 
 class Device(object):
     """
-    Template device with simple api. Provide _get_ouputs and _set_state functions
+    Template device with simple api. Provide _get_outputs and _set_outputs functions
     """
 
     _write_access = False
 
     class ACTION(IntEnum):
+        """
+        Device output action
+        https://www.netio-products.com/files/NETIO-M2M-API-Protocol-JSON.pdf
+        """
         OFF = 0
         ON = 1
         SHORT_OFF = 2
@@ -32,35 +38,39 @@ class Device(object):
         "Output", "ID Name State Action Delay Current PowerFactor Load Energy"
     )
 
+    @abstractmethod
     def __init__(self, *args, **kwargs):
-        raise NotImplementedError("The function has to be implemented")
+        pass
 
-    def _get_ouputs(self) -> List[OUTPUT]:
-        """Return sorted list of all outputs in format of self.OUTPUT"""
-        raise NotImplementedError("The function has to be implemented")
+    @abstractmethod
+    def _get_outputs(self) -> List[OUTPUT]:
+        """ Return list of all outputs in format of self.OUTPUT """
 
-    def _set_state(self, id: int, action: ACTION) -> None:
-        raise NotImplementedError("The function has to be implemented")
+    @abstractmethod
+    def _set_outputs(self, actions: Dict[int, ACTION]) -> None:
+        """ Set multiple outputs. """
+
+    def get_outputs(self) -> List[OUTPUT]:
+        """ Returns list of available sockets and their state"""
+        return self._get_outputs()
 
     def get_output(self, id: int) -> OUTPUT:
-        response = self._get_outputs()
-        return next(filter(lambda output: output.ID == id, response))
-
-    def get_outputs(self, ids: List[int]) -> List[OUTPUT]:
-        # Let's have a real collection of IDs for checking the response IDs
-        # against.
-        ids = set(ids)
-        response = self._get_outputs()
-        return [output for output in response if output.ID in ids]
-
-    def set_output(self, id: int, action: ACTION = ACTION.NOCHANGE) -> None:
-        self.set_outputs({id: action})
+        """ Get state of single socket by its id """
+        return next(filter(lambda output: output.ID == id, self.get_outputs()))
 
     def set_outputs(self, actions: Dict[int, ACTION]) -> None:
+        """
+        Set state of multiple outputs at once
+        >>> n.set_outputs({1: n.ACTION.ON, 2:n.ACTION.OFF})
+        """
+        # TODO verify if socket id's are in range
         if self._write_access:
-            self._set_states(actions)
+            self._set_outputs(actions)
         else:
             raise AuthError("cannot write, without write access")
+
+    def set_output(self, id: int, action: ACTION) -> None:
+        self.set_outputs({id: action})
 
     def __repr__(self):
         return f"<Netio {self.DeviceName} [{self.SerialNumber}]>"
@@ -154,7 +164,7 @@ class JsonDevice(Device):
             outputs.append(state)
         return outputs
 
-    def _set_states(self, actions: dict) -> dict:
+    def _set_outputs(self, actions: dict) -> dict:
         outputs = []
         for id, action in actions.items():
             outputs.append({'ID': id, 'Action': action})
