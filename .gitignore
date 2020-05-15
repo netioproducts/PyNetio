@@ -4,3 +4,5 @@ Netio.egg-info/
 __pycache__/
 
 .*.swp
+
+netio.ini

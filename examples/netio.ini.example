@@ -1,0 +1,42 @@
+#
+# Configuration example for netio command line interface tool.
+#
+
+[DEFAULT]
+
+# You may override the default user '' with the following line:
+username = 'admin'
+
+# Great way to set password so you don't have to use it on the commandline:
+password = 'superSecret'
+
+# Specify a certificate in case your devices uses a self-signed one.
+cert = True
+
+# increase the verbosity from 0 (quiet) to 3 ()loud
+verbose = 0
+
+# In case you've got a crufty self-signed cert, you might want to disable
+# warnings from urllib with:
+# disable_urllib_warnings: true
+
+
+[netio-4all.netio-products.com:8080]
+user = ''
+password = ''
+Port = 443
+
+
+[topsecret.server.com]
+ForwardX11 = no
+
+device: netio.example.org
+password: 'your password here'
+
+# Chose protocol from 'https' and 'http'. The former is the default if no
+# protocol is given.
+protocol: https
+cert: netio.example.org.pem
+
+
+

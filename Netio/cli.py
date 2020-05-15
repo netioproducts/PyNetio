@@ -4,9 +4,12 @@ Netio Command line interface
 """
 
 import argparse
+import configparser
+
 import requests
 import os
 import sys
+from urllib.parse import urlparse, urlunparse
 
 from .exceptions import NetioException
 from . import Netio
@@ -33,16 +36,54 @@ released under MIT license by NETIO Products a.s.
 """
 
 
+def get_arg(arg, config, name, section, default):
+    """
+    argument is looked up in this order:
+     1. argument itself
+     2. specified section
+     3. DEFAULT section
+     4. param default
+    """
+    if arg == default:
+        if section in config.sections():
+            return config[section].get(name, config['DEFAULT'].get(name, default))
+
+
+def load_config(args):
+    """ Load configration file and other other configs """
+
+    # TODO ENV variable
+
+    if not args.conf:
+        return args
+
+    config = configparser.ConfigParser()
+    config.read(args.conf)
+
+    u = urlparse(args.device)
+
+    args.cert = get_arg(args.cert, config, 'cert', u.netloc, True)
+    args.user = get_arg(args.user, config, 'user', u.netloc, None)
+    args.password = get_arg(args.password, config, 'password', u.netloc, None)
+    args.no_cert_warning = get_arg(args.no_cert_warning, config, 'password', u.netloc, False)
+
+    return args
+
+
 def main(args):
     """ Main entry point of the app """
-    # TODO load config
+
+    args = load_config(args)
 
     if args.no_cert_warning:
         requests.packages.urllib3.disable_warnings()
 
+    u = urlparse(args.device)
+    u = u._replace(path='/netio.json') if not u.path else u  # no path specified
+
+    # try to run the specified command, on fail print nice fail message
     try:
-        device = Netio(args.device, auth_rw=(args.user, args.password), verify=args.cert, skip_init=True)
-        print(args)
+        device = Netio(urlunparse(u), auth_rw=(args.user, args.password), verify=args.cert, skip_init=True)
         args.func(device, args)
     except NetioException as e:
         print(e.args[0], file=sys.stderr)
@@ -50,7 +91,7 @@ def main(args):
 
 def command_set(device: Netio, args: argparse.Namespace) -> None:
     """ Set the output specified in args.id to args.action """
-    print(device.set_output(args.id, args.action))
+    device.set_output(args.id, args.action)
 
 
 def command_get(device: Netio, args: argparse.Namespace) -> None:
@@ -69,7 +110,6 @@ def command_get(device: Netio, args: argparse.Namespace) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(epilog=EPILOG)  # prog='netio')
 
-    # TODO verify URI
     parser.add_argument('device', metavar='DEVICE', action='store', help='Netio device URL')
 
     parser.add_argument("-u", "--user", action="store", dest='user', metavar='U', help='M2M API username')

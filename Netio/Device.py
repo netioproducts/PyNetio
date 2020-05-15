@@ -146,9 +146,13 @@ class JsonDevice(Device):
         return self._parse_response(response)
 
     def _get(self) -> dict:
-        response = requests.get(
-            self._url, auth=requests.auth.HTTPBasicAuth(self._user, self._pass), verify=self._verify
-        )
+        try:
+            response = requests.get(
+                self._url, auth=requests.auth.HTTPBasicAuth(self._user, self._pass), verify=self._verify
+            )
+        except requests.exceptions.SSLError:
+            raise AuthError("Invalid certificate")
+
         return self._parse_response(response)
 
     def _get_outputs(self) -> List[Device.OUTPUT]:
