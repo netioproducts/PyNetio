@@ -7,7 +7,7 @@ import json
 from enum import IntEnum
 from typing import Dict, List
 
-from Netio.exceptions import CommunicationError, AuthError
+from Netio.exceptions import CommunicationError, AuthError, UnknownOutputId
 
 
 class Device(object):
@@ -22,6 +22,7 @@ class Device(object):
         Device output action
         https://www.netio-products.com/files/NETIO-M2M-API-Protocol-JSON.pdf
         """
+
         OFF = 0
         ON = 1
         SHORT_OFF = 2
@@ -30,13 +31,11 @@ class Device(object):
         NOCHANGE = 5
         IGNORED = 6
 
-    DeviceName: str
-    SerialNumber: str
-    NumOutputs: int
+    DeviceName: str = ''
+    SerialNumber: str = 'Unknown'
+    NumOutputs: int = 0
 
-    OUTPUT = collections.namedtuple(
-        "Output", "ID Name State Action Delay Current PowerFactor Load Energy"
-    )
+    OUTPUT = collections.namedtuple("Output", "ID Name State Action Delay Current PowerFactor Load Energy")
 
     @abstractmethod
     def __init__(self, *args, **kwargs):
@@ -56,7 +55,11 @@ class Device(object):
 
     def get_output(self, id: int) -> OUTPUT:
         """ Get state of single socket by its id """
-        return next(filter(lambda output: output.ID == id, self.get_outputs()))
+        outputs = self.get_outputs()
+        try:
+            return next(filter(lambda output: output.ID == id, outputs))
+        except StopIteration:
+            raise UnknownOutputId("Invalid output ID")
 
     def set_outputs(self, actions: Dict[int, ACTION]) -> None:
         """
@@ -77,7 +80,7 @@ class Device(object):
 
 
 class JsonDevice(Device):
-    def __init__(self, url, auth_r=None, auth_rw=None, verify=None):
+    def __init__(self, url, auth_r=None, auth_rw=None, verify=None, skip_init=False):
         self._url = url
         self._verify = verify
 
@@ -91,6 +94,11 @@ class JsonDevice(Device):
             self._pass = auth_r[1]
         else:
             raise AuthError("No auth provided.")
+
+        if not skip_init:
+            self.init()
+
+    def init(self):
 
         # request information about the Device
         r_json = self._get()
@@ -118,24 +126,29 @@ class JsonDevice(Device):
             raise AuthError('Invalid Username or Password')
 
         if response.status_code == 403:
-            raise AuthError('Read only credentials used')
+            raise AuthError('Insufficient permissions to write')
 
         if not response.ok:
             raise CommunicationError("Communication with device failed")
         return rj
 
     def _post(self, body: dict) -> dict:
-        response = requests.post(self._url,
-                                 data=json.dumps(body),
-                                 auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
-                                 verify=self._verify)
+        try:
+            response = requests.post(
+                self._url,
+                data=json.dumps(body),
+                auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
+                verify=self._verify,
+            )
+        except requests.exceptions.SSLError:
+            raise AuthError("Invalid certificate")
 
         return self._parse_response(response)
 
     def _get(self) -> dict:
-        response = requests.get(self._url,
-                                auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
-                                verify=self._verify)
+        response = requests.get(
+            self._url, auth=requests.auth.HTTPBasicAuth(self._user, self._pass), verify=self._verify
+        )
         return self._parse_response(response)
 
     def _get_outputs(self) -> List[Device.OUTPUT]:
@@ -148,8 +161,7 @@ class JsonDevice(Device):
 
         outputs = list()
 
-        for o_id in range(self.NumOutputs):
-            output = r_json.get("Outputs")[o_id]
+        for output in r_json.get('Outputs'):
             state = self.OUTPUT(
                 ID=output["ID"],
                 Name=output["Name"],
