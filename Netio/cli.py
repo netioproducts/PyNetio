@@ -70,9 +70,50 @@ def load_config(args):
     return args
 
 
-def main(args):
-    """ Main entry point of the app """
+def parse_args():
+    parser = argparse.ArgumentParser(epilog=EPILOG)  # prog='netio')
 
+    parser.add_argument('device', metavar='DEVICE', action='store', help='Netio device URL')
+
+    parser.add_argument("-u", "--user", action="store", dest='user', metavar='U', help='M2M API username')
+    parser.add_argument("-p", "--password", action="store", dest='password', metavar='P', help='M2M API password')
+
+    parser.add_argument("-C", "--cert", action="store_false", dest='cert', default=True, help='HTTPS Certificate')
+    parser.add_argument("-c", "--config", action="store", dest="conf", metavar='CFG', help='Configuration file')
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
+    parser.add_argument(
+        "--no-cert-warning",
+        action="store_true",
+        help="Disable warnings about certificate's subjectAltName versus commonName",
+    )
+
+    # TODO version from setup
+    parser.add_argument("--version", action="version", version="%(prog)s (version {version})".format(version="0.0.1"))
+
+    command_parser = parser.add_subparsers(metavar="COMMAND", help="device command", required=True)
+
+    # GET command subparser
+    get_parser = command_parser.add_parser("get", help="GET output state", aliases=['GET', 'G', 'g'])
+    get_parser.add_argument('id', metavar='ID', nargs='?', type=int, default=-1, help='Output ID. All if not specified')
+    get_parser.set_defaults(func=command_get)
+    get_parser.add_argument("-d", "--delimiter", action="store", dest="delim", default=";", help='')
+
+    # SET command subparser
+    set_parser = command_parser.add_parser("set", help="SET output state", aliases=['SET', 'S', 's'])
+    set_parser.set_defaults(func=command_set)
+    set_parser.add_argument('id', metavar='ID', type=int)
+    set_parser.add_argument('action', metavar='ACTION', type=str2action, choices=ACTION_CHOICES)
+
+    # INFO command subparser
+    info_parser = command_parser.add_parser("info", help="show device info", aliases=['INFO', 'I', 'i'])
+    info_parser.set_defaults(func=command_info)
+
+    return parser.parse_args()
+
+
+def main():
+    """ Main entry point of the app """
+    args = parse_args()
     args = load_config(args)
 
     if args.no_cert_warning:
@@ -107,43 +148,13 @@ def command_get(device: Netio, args: argparse.Namespace) -> None:
         print(o.ID, o.Name, o.State, o.Action, o.Delay, o.Current, o.PowerFactor, o.Load, o.Energy, sep=args.delim)
 
 
+def command_info(device: Netio, args: argparse.Namespace) -> None:
+    for key, data in device.get_info().items():
+        print(key)
+        for subkey, value in data.items():
+            pad = 18 - len(subkey)
+            print('  ', subkey, ' ' * pad, value)
+
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(epilog=EPILOG)  # prog='netio')
-
-    parser.add_argument('device', metavar='DEVICE', action='store', help='Netio device URL')
-
-    parser.add_argument("-u", "--user", action="store", dest='user', metavar='U', help='M2M API username')
-    parser.add_argument("-p", "--password", action="store", dest='password', metavar='P', help='M2M API password')
-
-    parser.add_argument("-C", "--cert", action="store_false", dest='cert', default=True, help='HTTPS Certificate')
-    parser.add_argument("-c", "--config", action="store", dest="conf", metavar='CFG', help='Configuration file')
-    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity")
-    parser.add_argument(
-        "--no-cert-warning",
-        action="store_true",
-        help="Disable warnings about certificate's subjectAltName versus commonName",
-    )
-
-    # TODO version from setup
-    parser.add_argument("--version", action="version", version="%(prog)s (version {version})".format(version="0.0.1"))
-
-    command_parser = parser.add_subparsers(metavar="COMMAND", help="netio device command", required=True)
-
-    # GET command subparser
-    get_parser = command_parser.add_parser("get", help="GET output state")
-    get_parser.add_argument('id', metavar='ID', nargs='?', type=int, default=-1, help='Output ID. All if not specified')
-    get_parser.set_defaults(func=command_get)
-    get_parser.add_argument("-d", "--delimiter", action="store", dest="delim", default=";", help='')
-
-    # SET command subparser
-    set_parser = command_parser.add_parser("set", help="SET output state")
-    set_parser.set_defaults(func=command_set)
-    set_parser.add_argument('id', metavar='ID', type=int)
-    set_parser.add_argument('action', metavar='ACTION', type=str2action, choices=ACTION_CHOICES)
-
-    # INFO command subparser
-    info_parser = command_parser.add_parser("info", help="show device info")
-    info_parser.set_defaults(func=lambda d, x: print("info_command"))
-
-    args = parser.parse_args()
-    main(args)
+    main()

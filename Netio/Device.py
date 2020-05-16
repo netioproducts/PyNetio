@@ -107,6 +107,11 @@ class JsonDevice(Device):
         self.DeviceName = r_json["Agent"]["DeviceName"]
         self.SerialNumber = r_json["Agent"]["SerialNumber"]
 
+    def get_info(self):
+        r_json = self._get()
+        r_json.pop('Outputs')
+        return r_json
+
     @staticmethod
     def _parse_response(response: requests.Response) -> dict:
         """
