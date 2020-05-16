@@ -1,13 +1,12 @@
 # Netio
 
-python 3 Bindings for communication with NETIO Products devices
+python 3 Bindings and CLI for communication with NETIO Products devices
 
-
-# Usage
 Install the latest package from pip
 ```bash
-pip install Netio
+pip install Netio --upgrade
 ```
+# API Interface
 
 Login to your device and enable JSON API
 
@@ -52,3 +51,45 @@ Output(ID=3, Name='out_3', State=1, Action=1, Delay=500, Current=8610, PowerFact
 Output(ID=4, Name='out_4', State=1, Action=1, Delay=500, Current=11540, PowerFactor=1.0, Load=2768, Energy=21077736)
 ```
 
+# CLI Interface
+```
+usage: cli.py [-h] [-u U] [-p P] [-C] [-c CFG] [-v] [--no-cert-warning] [--version] DEVICE COMMAND ...
+
+positional arguments:
+  DEVICE                Netio device URL
+  COMMAND               device command
+    get (GET, G, g)     GET output state
+    set (SET, S, s)     SET output state
+    info (INFO, I, i)   show device info
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -u U, --user U        M2M API username
+  -p P, --password P    M2M API password
+  -C, --cert            HTTPS Certificate
+  -c CFG, --config CFG  Configuration file
+  -v, --verbose         increase verbosity
+  --no-cert-warning     Disable warnings about certificate's subjectAltName versus commonName
+  --version             show program's version number and exit
+```
+
+ - `GET` takes another positional argument ID, by default print's all outputs
+ - `SET` takes TWO arguments `ID` and `ACTION`. see `netio device SET --help`
+ - `INFO` does not take any parameters
+
+for more information about commands see `Netio device CMD --help`
+ 
+You can also use configuration file, specified wia `--config netio.ini`. 
+For explanation and example of the configration file see [examples](examples/netio.example.ini)
+
+example usage:
+```
+# toggle output 1
+Netio -u admin --password secret --cert mycert.pem netio.localhost SET 1 TOGGLE
+
+# get information about device. credentials sourced from netio.ini
+Netio --cert netio.ini netio.localhost INFO
+
+# see information about output 1
+Netio --cert netio.ini netio.localhost GET 1
+```
