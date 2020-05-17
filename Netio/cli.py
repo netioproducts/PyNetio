@@ -97,6 +97,8 @@ def parse_args():
     get_parser.add_argument('id', metavar='ID', nargs='?', type=int, default=-1, help='Output ID. All if not specified')
     get_parser.set_defaults(func=command_get)
     get_parser.add_argument("-d", "--delimiter", action="store", dest="delim", default=";", help='')
+    get_parser.add_argument("--no-header", action="store_true", help='don\'t print column description')
+    get_parser.add_argument("--action-int", action="store_true", help='print action as integer')
 
     # SET command subparser
     set_parser = command_parser.add_parser("set", help="SET output state", aliases=['SET', 'S', 's'])
@@ -143,9 +145,11 @@ def command_get(device: Netio, args: argparse.Namespace) -> None:
     else:
         outputs = (device.get_output(args.id),)
 
-    print('id', 'Name', 'State', 'Action', 'Delay', 'Current', 'PowerFactor', 'Load', 'Energy', sep=args.delim)
+    if not args.no_header:
+        print('id', 'Name', 'State', 'Action', 'Delay', 'Current', 'PowerFactor', 'Load', 'Energy', sep=args.delim)
     for o in outputs:
-        print(o.ID, o.Name, o.State, o.Action, o.Delay, o.Current, o.PowerFactor, o.Load, o.Energy, sep=args.delim)
+        action = o.Action if not args.action_int else o.Action.value
+        print(o.ID, o.Name, o.State, action, o.Delay, o.Current, o.PowerFactor, o.Load, o.Energy, sep=args.delim)
 
 
 def command_info(device: Netio, args: argparse.Namespace) -> None:
