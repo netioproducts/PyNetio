@@ -6,6 +6,7 @@ Netio Command line interface
 import argparse
 import configparser
 
+import pkg_resources
 import requests
 import os
 import sys
@@ -36,7 +37,7 @@ released under MIT license by NETIO Products a.s.
 """
 
 
-def get_arg(arg, config, name, section, default):
+def get_arg(arg, config, name, env_name, section, default):
     """
     argument is looked up in this order:
      1. argument itself
@@ -45,27 +46,36 @@ def get_arg(arg, config, name, section, default):
      4. param default
     """
     if arg == default:
+        if env_name and env_name in os.environ:
+            return os.environ[env_name]
         if section in config.sections():
             return config[section].get(name, config['DEFAULT'].get(name, default))
+    return arg
 
 
 def load_config(args):
-    """ Load configration file and other other configs """
+    """ Load configuration file and other other configs """
 
-    # TODO ENV variable
-
+    config = configparser.ConfigParser({'cert': 'True', 'user': '', 'password': '', 'no_cert_warning': ''})
     if not args.conf:
-        return args
+        args.conf = os.environ.get('NETIO_CONFIG')
 
-    config = configparser.ConfigParser()
-    config.read(args.conf)
+    if args.conf:
+        try:
+            config.read(args.conf)
+        except TypeError:
+            raise NetioException('Failed reading config')
 
     u = urlparse(args.device)
 
-    args.cert = get_arg(args.cert, config, 'cert', u.netloc, True)
-    args.user = get_arg(args.user, config, 'user', u.netloc, None)
-    args.password = get_arg(args.password, config, 'password', u.netloc, None)
-    args.no_cert_warning = get_arg(args.no_cert_warning, config, 'password', u.netloc, False)
+    args.cert = get_arg(args.cert, config, 'cert', None, u.netloc, True)
+    args.user = get_arg(args.user, config, 'user', 'NETIO_USERNAME', u.netloc, None)
+    args.password = get_arg(args.password, config, 'password', 'NETIO_PASSWORD', u.netloc, None)
+    args.no_cert_warning = get_arg(args.no_cert_warning, config, 'no_cert_warning', None, u.netloc, False)
+
+    # resolve the path of cert relative to configuration path
+    basedir = os.path.dirname(args.conf) if args.conf else os.path.dirname(os.path.curdir)
+    args.cert = args.cert if isinstance(args.cert, bool) else os.path.join(basedir, args.cert)
 
     return args
 
@@ -115,21 +125,24 @@ def parse_args():
 
 def main():
     """ Main entry point of the app """
-    args = parse_args()
-    args = load_config(args)
-
-    if args.no_cert_warning:
-        requests.packages.urllib3.disable_warnings()
-
-    u = urlparse(args.device)
-    u = u._replace(path='/netio.json') if not u.path else u  # no path specified
-
-    # try to run the specified command, on fail print nice fail message
     try:
+
+        args = parse_args()
+        args = load_config(args)
+
+        if args.no_cert_warning:
+            requests.packages.urllib3.disable_warnings()
+
+        u = urlparse(args.device)
+        u = u._replace(path='/netio.json') if not u.path else u  # no path specified
+
+        # try to run the specified command, on fail print nice fail message
         device = Netio(urlunparse(u), auth_rw=(args.user, args.password), verify=args.cert, skip_init=True)
         args.func(device, args)
     except NetioException as e:
         print(e.args[0], file=sys.stderr)
+    except Exception as e:
+        print('Internal error: ', e, file=sys.stderr)
 
 
 def command_set(device: Netio, args: argparse.Namespace) -> None:

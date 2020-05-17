@@ -79,13 +79,13 @@ optional arguments:
 
 for more information about commands see `Netio device CMD --help`
  
-You can also use configuration file, specified wia `--config netio.ini`. 
-For explanation and example of the configration file see [examples](examples/netio.example.ini)
+You can also use configuration file, specified wia `--config netio.ini` or wia `NETIO_CONFIG` environment variable. 
+For explanation and example of the configuration file see [examples](examples/netio.example.ini)
 
 example usage:
 ```
 # toggle output 1
-Netio -u admin --password secret --cert mycert.pem netio.localhost SET 1 TOGGLE
+NETIO_PASSWORD=secret Netio -u admin --cert mycert.pem netio.localhost SET 1 TOGGLE
 
 # get information about device. credentials sourced from netio.ini
 Netio --cert netio.ini netio.localhost INFO
@@ -93,3 +93,13 @@ Netio --cert netio.ini netio.localhost INFO
 # see information about output 1
 Netio --cert netio.ini netio.localhost GET 1
 ```
+
+
+### Parameter lookup
+when supplying for example password, it's looked up in this order:
+  1. command line argument
+  2. ENV variable
+  3. configuration file (if supplied)
+     1. special section
+     2. DEFAULT section
+  4. Default value (if applicable)
