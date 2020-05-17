@@ -98,7 +98,9 @@ def parse_args():
     )
 
     # TODO version from setup
-    parser.add_argument("--version", action="version", version="%(prog)s (version {version})".format(version="0.0.1"))
+
+    version = pkg_resources.require("Netio")[0].version
+    parser.add_argument("--version", action="version", version=f"%(prog)s (version {version})")
 
     command_parser = parser.add_subparsers(metavar="COMMAND", help="device command", required=True)
 
