@@ -79,8 +79,9 @@ optional arguments:
 
 for more information about commands see `Netio device CMD --help`
  
-You can also use configuration file, specified wia `--config netio.ini` or wia `NETIO_CONFIG` environment variable. 
+You can also use configuration file, specified wia `--config netio.ini` or wia `NETIO_CONFIG` environment variable.
 For explanation and example of the configuration file see [examples](examples/netio.example.ini)
+User and password can be also specified wia `NETIO_USER` and `NETIO_PASSWORD` Environ.
 
 example usage:
 ```

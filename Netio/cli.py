@@ -80,7 +80,7 @@ def load_config(args):
     u = urlparse(args.device)
 
     args.cert = get_arg(args.cert, config, 'cert', None, u.netloc, True)
-    args.user = get_arg(args.user, config, 'user', 'NETIO_USERNAME', u.netloc, None)
+    args.user = get_arg(args.user, config, 'user', 'NETIO_USER', u.netloc, None)
     args.password = get_arg(args.password, config, 'password', 'NETIO_PASSWORD', u.netloc, None)
     args.no_cert_warning = get_arg(args.no_cert_warning, config, 'no_cert_warning', None, u.netloc, False)
 
