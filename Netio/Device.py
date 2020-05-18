@@ -53,6 +53,15 @@ class Device(object):
         """ Returns list of available sockets and their state"""
         return self._get_outputs()
 
+    def get_outputs_filtered(self, ids):
+        """ """
+        outputs = self.get_outputs()
+        for i in ids:
+            try:
+                yield next(filter(lambda output: output.ID == i, outputs))
+            except StopIteration:
+                raise UnknownOutputId("Invalid output ID")
+
     def get_output(self, id: int) -> OUTPUT:
         """ Get state of single socket by its id """
         outputs = self.get_outputs()

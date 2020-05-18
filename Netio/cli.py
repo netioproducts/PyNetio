@@ -5,6 +5,7 @@ Netio Command line interface
 
 import argparse
 import configparser
+from typing import List
 
 import pkg_resources
 import requests
@@ -19,8 +20,8 @@ from . import Netio
 def str2action(s: str) -> Netio.ACTION:
     """Parse Device.ACTION, either by name or by integer representation """
     try:
-        return Netio.ACTION[s]
-    except KeyError:
+        return Netio.ACTION[s.upper()]
+    except KeyError or AttributeError:
         try:
             return Netio.ACTION(int(s))
         except ValueError:
@@ -51,6 +52,15 @@ def get_arg(arg, config, name, env_name, section, default):
         if section in config.sections():
             return config[section].get(name, config['DEFAULT'].get(name, default))
     return arg
+
+
+def get_ids(id: str, max_id: int) -> List[int]:
+    if id.isdecimal() and int(id) in range(1, max_id + 1):
+        return [int(id)]
+    elif id.lower() == 'all':
+        return list(range(1, max_id + 1))
+    else:
+        raise NetioException(f"Invalid output ID '{id}', valid range is {1}-{max_id} or 'ALL'")
 
 
 def load_config(args):
@@ -106,7 +116,7 @@ def parse_args():
 
     # GET command subparser
     get_parser = command_parser.add_parser("get", help="GET output state", aliases=['GET', 'G', 'g'])
-    get_parser.add_argument('id', metavar='ID', nargs='?', type=int, default=-1, help='Output ID. All if not specified')
+    get_parser.add_argument('id', metavar='ID', nargs='?', default='ALL', help='Output ID. All if not specified')
     get_parser.set_defaults(func=command_get)
     get_parser.add_argument("-d", "--delimiter", action="store", dest="delim", default=";", help='')
     get_parser.add_argument("--no-header", action="store_true", help='don\'t print column description')
@@ -115,8 +125,16 @@ def parse_args():
     # SET command subparser
     set_parser = command_parser.add_parser("set", help="SET output state", aliases=['SET', 'S', 's'])
     set_parser.set_defaults(func=command_set)
-    set_parser.add_argument('id', metavar='ID', type=int)
-    set_parser.add_argument('action', metavar='ACTION', type=str2action, choices=ACTION_CHOICES)
+    set_parser.add_argument('id', metavar='ID', help="Output ID. All to set action to all outputs at once")
+
+    # TODO use argparse.Action so that we can display choices
+    set_parser.add_argument(
+        'action',
+        metavar='ACTION',
+        type=str2action,
+        choices=ACTION_CHOICES,
+        help=f"Output action. " f"Valid actions " f"are {[e.name for e in Netio.ACTION]}",
+    )
 
     # INFO command subparser
     info_parser = command_parser.add_parser("info", help="show device info", aliases=['INFO', 'I', 'i'])
@@ -149,16 +167,22 @@ def main():
 
 def command_set(device: Netio, args: argparse.Namespace) -> None:
     """ Set the output specified in args.id to args.action """
-    device.set_output(args.id, args.action)
+
+    device.init()
+
+    ids = get_ids(args.id, device.NumOutputs)
+    device.set_outputs(dict(zip(ids, [args.action] * device.NumOutputs)))
 
 
 def command_get(device: Netio, args: argparse.Namespace) -> None:
     """ Print the state of the output and exit """
 
-    if args.id == -1:
-        outputs = device.get_outputs()
-    else:
-        outputs = (device.get_output(args.id),)
+    # init because we need to know NumOutputs so we can generate id list for "ALL"
+    # This initialization could be skipped, but that would require different handling for 'all' parameter
+    device.init()
+
+    ids = get_ids(args.id, device.NumOutputs)  # returns single or range
+    outputs = list(device.get_outputs_filtered(ids))
 
     if not args.no_header:
         print('id', 'Name', 'State', 'Action', 'Delay', 'Current', 'PowerFactor', 'Load', 'Energy', sep=args.delim)
