@@ -49,8 +49,9 @@ def get_arg(arg, config, name, env_name, section, default):
     if arg == default:
         if env_name and env_name in os.environ:
             return os.environ[env_name]
-        if section in config.sections():
-            return config[section].get(name, config['DEFAULT'].get(name, default))
+        if config.has_option(section, name):
+            return config[section][name]
+        return config['DEFAULT'].get(name, default)
     return arg
 
 
@@ -66,7 +67,7 @@ def get_ids(id: str, max_id: int) -> List[int]:
 def load_config(args):
     """ Load configuration file and other other configs """
 
-    config = configparser.ConfigParser({'cert': 'True', 'user': '', 'password': '', 'no_cert_warning': ''})
+    config = configparser.ConfigParser({'user': '', 'password': '', 'no_cert_warning': ''})
     if not args.conf:
         args.conf = os.environ.get('NETIO_CONFIG')
 
