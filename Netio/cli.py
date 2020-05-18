@@ -77,6 +77,10 @@ def load_config(args):
         except TypeError:
             raise NetioException('Failed reading config')
 
+    # resolve the device alias
+    if config.has_option(args.device, 'url'):
+        args.device = config[args.device]['url']
+
     u = urlparse(args.device)
 
     args.cert = get_arg(args.cert, config, 'cert', None, u.netloc, True)

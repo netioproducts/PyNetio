@@ -73,7 +73,7 @@ optional arguments:
   --version             show program's version number and exit
 ```
 
- - `GET` takes another positional argument ID, by default print's all outputs
+ - `GET` takes another positional argument ID, by default prints all outputs
  - `SET` takes TWO arguments `ID` and `ACTION`. see `netio device SET --help`
  - `INFO` does not take any parameters
 
@@ -89,10 +89,10 @@ example usage:
 NETIO_PASSWORD=secret Netio -u admin --cert mycert.pem netio.localhost SET 1 TOGGLE
 
 # get information about device. credentials sourced from netio.ini
-Netio --cert netio.ini netio.localhost INFO
+Netio --conf netio.ini netio.localhost INFO
 
-# see information about output 1
-Netio --cert netio.ini netio.localhost GET 1
+# see information about output 1 using alias from config
+NETIO_CONFIG=netio.ini Netio device1 GET 1
 ```
 
 
