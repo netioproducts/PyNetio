@@ -55,13 +55,28 @@ def get_arg(arg, config, name, env_name, section, default):
     return arg
 
 
-def get_ids(id: str, max_id: int) -> List[int]:
-    if id.isdecimal() and int(id) in range(1, max_id + 1):
-        return [int(id)]
-    elif id.lower() == 'all':
-        return list(range(1, max_id + 1))
-    else:
-        raise NetioException(f"Invalid output ID '{id}', valid range is {1}-{max_id} or 'ALL'")
+def get_ids(id_strs: List[str], num_outputs: int) -> List[int]:
+    max_id = num_outputs + 1
+    all_ids = range(1, max_id)
+    all_outputs_mode = False
+    individual_outputs_mode = False
+    result = []
+
+    for id_str in id_strs:
+        if id_str.lower() == 'all':
+            if individual_outputs_mode:
+                raise NetioException("Expecting either individual outputs IDs or 'ALL'")
+            all_outputs_mode = True
+            result = list(all_ids)
+        elif id_str.isdecimal() and int(id_str) in all_ids:
+            if all_outputs_mode:
+                raise NetioException("Expecting either individual outputs IDs or 'ALL'")
+            individual_outputs_mode = True
+            result.append(int(id_str))
+        else:
+            raise NetioException(f"Invalid output ID '{id_str}', valid range is {1}-{max_id} or 'ALL'")
+
+    return result
 
 
 def get_output_actions(ids_and_actions, num_outputs):
@@ -156,7 +171,7 @@ def parse_args():
 
     # GET command subparser
     get_parser = command_parser.add_parser("get", help="GET output state", aliases=['GET', 'G', 'g'])
-    get_parser.add_argument('id', metavar='ID', nargs='?', default='ALL', help='Output ID. All if not specified')
+    get_parser.add_argument('id', metavar='ID', nargs='+', default='ALL', help='Output ID. All if not specified')
     get_parser.set_defaults(func=command_get)
     get_parser.add_argument("-d", "--delimiter", action="store", dest="delim", default=";", help='')
     get_parser.add_argument("--no-header", action="store_true", help='don\'t print column description')
