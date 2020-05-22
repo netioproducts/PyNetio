@@ -64,6 +64,41 @@ def get_ids(id: str, max_id: int) -> List[int]:
         raise NetioException(f"Invalid output ID '{id}', valid range is {1}-{max_id} or 'ALL'")
 
 
+def get_output_actions(ids_and_actions, num_outputs):
+    max_id = num_outputs + 1
+    all_ids = range(1, max_id)
+    all_outputs_mode = False
+    individual_outputs_mode = False
+    result = {}
+
+    if len(ids_and_actions) % 2 != 0:
+        raise NetioException("Expecting ID ACTION pairs but got an odd number of arguments ({})".format(len(ids_and_actions)))
+    pairs = zip(ids_and_actions[::2], ids_and_actions[1::2])
+
+    for pair in list(pairs):
+        id_str, action_str = pair
+
+        if id_str.lower() == "all":
+            if individual_outputs_mode:
+                raise NetioException("Expecting either individual outputs IDs or 'ALL'")
+            all_outputs_mode = True
+            action = str2action(action_str)
+            result = dict(zip(all_ids, [action] * num_outputs))
+        elif id_str.isdecimal() and int(id_str) in all_ids:
+            if all_outputs_mode:
+                raise NetioException("Expecting either individual outputs IDs or 'ALL'")
+            individual_outputs_mode = True
+            id = int(id_str)
+            if id in result:
+                raise NetioException("Multiple actions given for id '{}' but expecting only one".format(id))
+            action = str2action(action_str)
+            result[id] = action
+        else:
+            raise NetioException(f"Invalid output ID '{id_str}', valid range is {1}-{max_id} or 'ALL'")
+
+    return result
+
+
 def load_config(args):
     """ Load configuration file and other other configs """
 
@@ -130,16 +165,11 @@ def parse_args():
     # SET command subparser
     set_parser = command_parser.add_parser("set", help="SET output state", aliases=['SET', 'S', 's'])
     set_parser.set_defaults(func=command_set)
-    set_parser.add_argument('id', metavar='ID', help="Output ID. All to set action to all outputs at once")
-
-    # TODO use argparse.Action so that we can display choices
-    set_parser.add_argument(
-        'action',
-        metavar='ACTION',
-        type=str2action,
-        choices=ACTION_CHOICES,
-        help=f"Output action. " f"Valid actions " f"are {[e.name for e in Netio.ACTION]}",
-    )
+    # We are using a forged meta variable to get ID and action pairs into the
+    # help. The actual result is still a list of individual parameters and
+    # parsing the pairs is done later by get_output_actions.
+    set_parser.add_argument("id_and_action", metavar="ID ACTION", nargs="+",
+        help=f"output ID and action pairs (valid actions: {[a.name for a in Netio.ACTION]})")
 
     # INFO command subparser
     info_parser = command_parser.add_parser("info", help="show device info", aliases=['INFO', 'I', 'i'])
@@ -188,8 +218,8 @@ def command_set(device: Netio, args: argparse.Namespace) -> None:
 
     device.init()
 
-    ids = get_ids(args.id, device.NumOutputs)
-    device.set_outputs(dict(zip(ids, [args.action] * device.NumOutputs)))
+    actions = get_output_actions(args.id_and_action, device.NumOutputs)
+    device.set_outputs(actions)
 
 
 def command_get(device: Netio, args: argparse.Namespace) -> None:
