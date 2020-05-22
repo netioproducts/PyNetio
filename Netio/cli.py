@@ -5,16 +5,16 @@ Netio Command line interface
 
 import argparse
 import configparser
-from typing import List
-
+import os
 import pkg_resources
 import requests
-import os
 import sys
-from urllib.parse import urlparse, urlunparse
+import traceback
 
-from .exceptions import NetioException
 from . import Netio
+from .exceptions import NetioException
+from typing import List
+from urllib.parse import urlparse, urlunparse
 
 
 def str2action(s: str) -> Netio.ACTION:
@@ -148,10 +148,21 @@ def parse_args():
     return parser.parse_args()
 
 
+def print_traceback(args, file=sys.stderr):
+    """
+    Print traceback if requested by argument '--verbose'. A traceback is also
+    considered as requested if arguments have not been parsed yet (args are
+    None).
+    """
+    if not args or (hasattr(args, "verbose") and args.verbose):
+        traceback.print_exc(file=file)
+
+
 def main():
     """ Main entry point of the app """
-    try:
+    args = None
 
+    try:
         args = parse_args()
         args = load_config(args)
 
@@ -166,8 +177,10 @@ def main():
         args.func(device, args)
     except NetioException as e:
         print(e.args[0], file=sys.stderr)
+        print_traceback(args)
     except Exception as e:
         print('Internal error: ', e, file=sys.stderr)
+        print_traceback(args)
 
 
 def command_set(device: Netio, args: argparse.Namespace) -> None:
