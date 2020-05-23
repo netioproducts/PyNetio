@@ -49,7 +49,7 @@ def get_arg(arg, config, name, env_name, section, default):
     if arg == default:
         if env_name and env_name in os.environ:
             return os.environ[env_name]
-        if config.has_option(section, name):
+        if section and config.has_option(section, name):
             return config[section][name]
         return config['DEFAULT'].get(name, default)
     return arg
@@ -123,9 +123,10 @@ def load_config(args):
 
     if args.conf:
         try:
-            config.read(args.conf)
-        except TypeError:
-            raise NetioException('Failed reading config')
+            with open(args.conf) as fp:
+                config.read_file(fp, args.conf)
+        except (TypeError, OSError, FileNotFoundError, configparser.Error) as e:
+            raise NetioException(f'Failed reading config ({e.__class__.__name__})')
 
     # resolve the device alias
     if config.has_option(args.device, 'url'):
