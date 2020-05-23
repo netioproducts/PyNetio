@@ -249,10 +249,10 @@ def command_get(device: Netio, args: argparse.Namespace) -> None:
     outputs = list(device.get_outputs_filtered(ids))
 
     if not args.no_header:
-        print('id', 'Name', 'State', 'Action', 'Delay', 'Current', 'PFactor', 'Load', 'Energy', sep=args.delim)
+        print('id', 'State', 'Action', 'Delay', 'Current', 'PFactor', 'Load', 'Energy', 'Name', sep=args.delim)
     for o in outputs:
         action = o.Action.name if not args.action_int else o.Action.value
-        print(o.ID, o.Name, o.State, action, o.Delay, o.Current, o.PowerFactor, o.Load, o.Energy, sep=args.delim)
+        print(o.ID, o.State, action, o.Delay, o.Current, o.PowerFactor, o.Load, o.Energy, o.Name, sep=args.delim)
 
 
 def command_info(device: Netio, args: argparse.Namespace) -> None:
