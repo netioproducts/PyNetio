@@ -23,6 +23,9 @@ All notable changes to this project will be documented in this file.
 ## [0.0.6] - 2020-05-16
 ### Fixed
  - off-by-one error in output indexing. 
+ 
+## [1.0.3] - 2020-06-01
 ### Added
- - CLI and config file support
+ - Major CLI redesign
+ - Updated documentation
 
