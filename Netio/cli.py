@@ -224,9 +224,11 @@ def main():
     except NetioException as e:
         print(e.args[0], file=sys.stderr)
         print_traceback(args)
+        exit(1)
     except Exception as e:
         print('Internal error: ', e, file=sys.stderr)
         print_traceback(args)
+        exit(1)
 
 
 def command_set(device: Netio, args: argparse.Namespace) -> None:
