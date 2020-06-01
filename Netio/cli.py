@@ -56,8 +56,14 @@ def get_arg(arg, config, name, env_name, section, default):
 
 
 def get_ids(id_strs: List[str], num_outputs: int) -> List[int]:
-    max_id = num_outputs + 1
-    all_ids = range(1, max_id)
+    """
+    Generate a list of integer IDs from list of strings.
+    The list can either contain one string "ALL" or an individual IDs
+
+    >> get_ids(["ALL"], 4)
+    [1, 2, 3, 4]
+    """
+    all_ids = range(1, num_outputs + 1)
     all_outputs_mode = False
     individual_outputs_mode = False
     result = []
@@ -74,12 +80,19 @@ def get_ids(id_strs: List[str], num_outputs: int) -> List[int]:
             individual_outputs_mode = True
             result.append(int(id_str))
         else:
-            raise NetioException(f"Invalid output ID '{id_str}', valid range is {1}-{max_id} or 'ALL'")
+            raise NetioException(f"Invalid output ID '{id_str}', valid range is {1}-{num_outputs + 1} or 'ALL'")
 
     return result
 
 
 def get_output_actions(ids_and_actions, num_outputs):
+    """
+    Parse out pairs of ID + ACTION from iterable `ids_and_actions`
+    parse 'all' keyword if present.
+    input can't have combination of all and individual IDs
+
+    return dictionary containing ID: ACTION pairs
+    """
     max_id = num_outputs + 1
     all_ids = range(1, max_id)
     all_outputs_mode = False
@@ -87,7 +100,7 @@ def get_output_actions(ids_and_actions, num_outputs):
     result = {}
 
     if len(ids_and_actions) % 2 != 0:
-        raise NetioException("Expecting ID ACTION pairs but got an odd number of arguments ({})".format(len(ids_and_actions)))
+        raise NetioException(f"Expecting ID ACTION pairs but got an odd number of arguments ({len(ids_and_actions)})")
     pairs = zip(ids_and_actions[::2], ids_and_actions[1::2])
 
     for pair in list(pairs):
@@ -163,8 +176,6 @@ def parse_args():
         help="Disable warnings about certificate's subjectAltName versus commonName",
     )
 
-    # TODO version from setup
-
     version = pkg_resources.require("Netio")[0].version
     parser.add_argument("--version", action="version", version=f"%(prog)s (version {version})")
 
@@ -185,7 +196,7 @@ def parse_args():
     # help. The actual result is still a list of individual parameters and
     # parsing the pairs is done later by get_output_actions.
     set_parser.add_argument("id_and_action", metavar="ID ACTION", nargs="+",
-        help=f"output ID and action pairs (valid actions: {[a.name for a in Netio.ACTION]})")
+                            help=f"output ID and action pairs (valid actions: {[a.name for a in Netio.ACTION]})")
 
     # INFO command subparser
     info_parser = command_parser.add_parser("info", help="show device info", aliases=['INFO', 'I', 'i'])
@@ -258,6 +269,7 @@ def command_get(device: Netio, args: argparse.Namespace) -> None:
 
 
 def command_info(device: Netio, args: argparse.Namespace) -> None:
+    """ Print out all data from device info """
     for key, data in device.get_info().items():
         print(key)
         for subkey, value in data.items():
