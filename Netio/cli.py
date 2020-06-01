@@ -172,7 +172,7 @@ def parse_args():
 
     # GET command subparser
     get_parser = command_parser.add_parser("get", help="GET output state", aliases=['GET', 'G', 'g'])
-    get_parser.add_argument('id', metavar='ID', nargs='+', default='ALL', help='Output ID. All if not specified')
+    get_parser.add_argument('id', metavar='ID', nargs='*', default=['ALL'], help='Output ID. All if not specified')
     get_parser.set_defaults(func=command_get)
     get_parser.add_argument("-d", "--delimiter", action="store", dest="delim", default="\t", help='')
     get_parser.add_argument("--no-header", action="store_true", help='don\'t print column description')
