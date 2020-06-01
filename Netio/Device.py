@@ -1,21 +1,28 @@
 import collections
+from abc import abstractmethod
+
 import requests
 import logging
 import json
 from enum import IntEnum
-from typing import List
+from typing import Dict, List
 
-from Netio.exceptions import CommunicationError, AuthError
+from Netio.exceptions import CommunicationError, AuthError, UnknownOutputId
 
 
 class Device(object):
     """
-    Template device with simple api. Provide _get_ouputs and _set_state functions
+    Template device with simple api. Provide _get_outputs and _set_outputs functions
     """
 
     _write_access = False
 
     class ACTION(IntEnum):
+        """
+        Device output action
+        https://www.netio-products.com/files/NETIO-M2M-API-Protocol-JSON.pdf
+        """
+
         OFF = 0
         ON = 1
         SHORT_OFF = 2
@@ -24,40 +31,65 @@ class Device(object):
         NOCHANGE = 5
         IGNORED = 6
 
-    DeviceName: str
-    SerialNumber: str
-    NumOutputs: int
+    DeviceName: str = ''
+    SerialNumber: str = 'Unknown'
+    NumOutputs: int = 0
 
-    OUTPUT = collections.namedtuple(
-        "Output", "ID Name State Action Delay Current PowerFactor Load Energy"
-    )
+    OUTPUT = collections.namedtuple("Output", "ID Name State Action Delay Current PowerFactor Load Energy")
 
+    @abstractmethod
     def __init__(self, *args, **kwargs):
-        raise NotImplementedError("The function has to be implemented")
+        pass
 
-    def _get_ouputs(self) -> List[OUTPUT]:
-        """Return sorted list of all outputs in format of self.OUTPUT"""
-        raise NotImplementedError("The function has to be implemented")
+    @abstractmethod
+    def _get_outputs(self) -> List[OUTPUT]:
+        """ Return list of all outputs in format of self.OUTPUT """
 
-    def _set_state(self, id: int, action: ACTION) -> None:
-        raise NotImplementedError("The function has to be implemented")
+    @abstractmethod
+    def _set_outputs(self, actions: Dict[int, ACTION]) -> None:
+        """ Set multiple outputs. """
+
+    def get_outputs(self) -> List[OUTPUT]:
+        """ Returns list of available sockets and their state"""
+        return self._get_outputs()
+
+    def get_outputs_filtered(self, ids):
+        """ """
+        outputs = self.get_outputs()
+        for i in ids:
+            try:
+                yield next(filter(lambda output: output.ID == i, outputs))
+            except StopIteration:
+                raise UnknownOutputId("Invalid output ID")
 
     def get_output(self, id: int) -> OUTPUT:
-        response = self._get_ouputs()
-        return list(response)[id]
+        """ Get state of single socket by its id """
+        outputs = self.get_outputs()
+        try:
+            return next(filter(lambda output: output.ID == id, outputs))
+        except StopIteration:
+            raise UnknownOutputId("Invalid output ID")
 
-    def set_output(self, id: int, action: ACTION = ACTION.NOCHANGE) -> None:
+    def set_outputs(self, actions: Dict[int, ACTION]) -> None:
+        """
+        Set state of multiple outputs at once
+        >>> n.set_outputs({1: n.ACTION.ON, 2:n.ACTION.OFF})
+        """
+        # TODO verify if socket id's are in range
         if self._write_access:
-            self._set_state(id, action)
+            self._set_outputs(actions)
         else:
             raise AuthError("cannot write, without write access")
+
+    def set_output(self, id: int, action: ACTION) -> None:
+        self.set_outputs({id: action})
 
     def __repr__(self):
         return f"<Netio {self.DeviceName} [{self.SerialNumber}]>"
 
 
 class JsonDevice(Device):
-    def __init__(self, url, auth_r=None, auth_rw=None, verify=None):
+    def __init__(self, url, auth_r=None, auth_rw=None, verify=None, skip_init=False):
         self._url = url
         self._verify = verify
 
@@ -72,12 +104,22 @@ class JsonDevice(Device):
         else:
             raise AuthError("No auth provided.")
 
+        if not skip_init:
+            self.init()
+
+    def init(self):
+
         # request information about the Device
         r_json = self._get()
 
         self.NumOutputs = r_json["Agent"]["NumOutputs"]
         self.DeviceName = r_json["Agent"]["DeviceName"]
         self.SerialNumber = r_json["Agent"]["SerialNumber"]
+
+    def get_info(self):
+        r_json = self._get()
+        r_json.pop('Outputs')
+        return r_json
 
     @staticmethod
     def _parse_response(response: requests.Response) -> dict:
@@ -98,27 +140,36 @@ class JsonDevice(Device):
             raise AuthError('Invalid Username or Password')
 
         if response.status_code == 403:
-            raise AuthError('Read only credentials used')
+            raise AuthError('Insufficient permissions to write')
 
         if not response.ok:
             raise CommunicationError("Communication with device failed")
         return rj
 
     def _post(self, body: dict) -> dict:
-        response = requests.post(self._url,
-                                 data=json.dumps(body),
-                                 auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
-                                 verify=self._verify)
+        try:
+            response = requests.post(
+                self._url,
+                data=json.dumps(body),
+                auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
+                verify=self._verify,
+            )
+        except requests.exceptions.SSLError:
+            raise AuthError("Invalid certificate")
 
         return self._parse_response(response)
 
     def _get(self) -> dict:
-        response = requests.get(self._url,
-                                auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
-                                verify=self._verify)
+        try:
+            response = requests.get(
+                self._url, auth=requests.auth.HTTPBasicAuth(self._user, self._pass), verify=self._verify
+            )
+        except requests.exceptions.SSLError:
+            raise AuthError("Invalid certificate")
+
         return self._parse_response(response)
 
-    def _get_ouputs(self) -> List[Device.OUTPUT]:
+    def _get_outputs(self) -> List[Device.OUTPUT]:
         """
         Send empty GET request to the device.
         Parse out the output states according to specification.
@@ -128,8 +179,7 @@ class JsonDevice(Device):
 
         outputs = list()
 
-        for o_id in range(self.NumOutputs):
-            output = r_json.get("Outputs")[o_id]
+        for output in r_json.get('Outputs'):
             state = self.OUTPUT(
                 ID=output["ID"],
                 Name=output["Name"],
@@ -144,9 +194,12 @@ class JsonDevice(Device):
             outputs.append(state)
         return outputs
 
-    def _set_state(self, id: int, action) -> dict:
+    def _set_outputs(self, actions: dict) -> dict:
+        outputs = []
+        for id, action in actions.items():
+            outputs.append({'ID': id, 'Action': action})
 
-        body = {"Outputs": [{"ID": id, "Action": action}]}
+        body = {"Outputs": outputs}
 
         return self._post(body)
 

@@ -2,3 +2,7 @@ build/
 dist/
 Netio.egg-info/
 __pycache__/
+
+.*.swp
+
+netio.ini

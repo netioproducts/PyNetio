@@ -19,3 +19,10 @@ All notable changes to this project will be documented in this file.
 ## [0.0.6] - 2020-05-12
 ### Added
  - support for self-signed certificates
+ 
+## [0.0.6] - 2020-05-16
+### Fixed
+ - off-by-one error in output indexing. 
+### Added
+ - CLI and config file support
+
