@@ -181,15 +181,15 @@ class JsonDevice(Device):
 
         for output in r_json.get('Outputs'):
             state = self.OUTPUT(
-                ID=output["ID"],
-                Name=output["Name"],
-                State=output["State"],
-                Action=self.ACTION(output["Action"]),
-                Delay=output["Delay"],
-                Current=output["Current"],
-                PowerFactor=output["PowerFactor"],
-                Load=output["Load"],
-                Energy=output["Energy"],
+                ID=output.get("ID"),
+                Name=output.get("Name"),
+                State=output.get("State"),
+                Action=self.ACTION(output.get("Action")),
+                Delay=output.get("Delay"),
+                Current=output.get("Current"),
+                PowerFactor=output.get("PowerFactor"),
+                Load=output.get("Load"),
+                Energy=output.get("Energy"),
             )
             outputs.append(state)
         return outputs
