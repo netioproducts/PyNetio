@@ -176,7 +176,11 @@ def parse_args():
         help="Disable warnings about certificate's subjectAltName versus commonName",
     )
 
-    version = pkg_resources.require("Netio")[0].version
+    try:
+        version = pkg_resources.require("Netio")[0].version
+    except pkg_resources.DistributionNotFound:
+        version = 'Unknown'
+
     parser.add_argument("--version", action="version", version=f"%(prog)s (version {version})")
 
     command_parser = parser.add_subparsers(metavar="COMMAND", help="device command", required=True)
@@ -235,11 +239,11 @@ def main():
     except NetioException as e:
         print(e.args[0], file=sys.stderr)
         print_traceback(args)
-        exit(1)
+        sys.exit(1)
     except Exception as e:
         print('Internal error: ', e, file=sys.stderr)
         print_traceback(args)
-        exit(1)
+        sys.exit(1)
 
 
 def command_set(device: Netio, args: argparse.Namespace) -> None:

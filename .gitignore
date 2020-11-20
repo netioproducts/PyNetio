@@ -2,7 +2,11 @@ build/
 dist/
 Netio.egg-info/
 __pycache__/
+venv/
+VirtualEnv/
+
 
 .*.swp
 
 netio.ini
+entrypoint.spec

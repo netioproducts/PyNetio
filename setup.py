@@ -1,11 +1,12 @@
 import setuptools
+import py2exe
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="Netio",
-    version="1.0.4",
+    version="1.0.5",
     author="Adam Verner",
     author_email="averner@netio.eu",
     license="MIT",
