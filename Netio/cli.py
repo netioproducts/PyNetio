@@ -183,7 +183,8 @@ def parse_args():
 
     parser.add_argument("--version", action="version", version=f"%(prog)s (version {version})")
 
-    command_parser = parser.add_subparsers(metavar="COMMAND", help="device command", required=True)
+    command_parser = parser.add_subparsers(metavar="COMMAND", help="device command")
+    command_parser.required = True
 
     # GET command subparser
     get_parser = command_parser.add_parser("get", help="GET output state", aliases=['GET', 'G', 'g'])

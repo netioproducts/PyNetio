@@ -29,3 +29,6 @@ All notable changes to this project will be documented in this file.
  - Major CLI redesign
  - Updated documentation
 
+## [1.0.6] - 2021-04-07
+### Added
+ - fix argparse for python 3.6
