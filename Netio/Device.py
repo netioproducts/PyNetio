@@ -128,11 +128,6 @@ class JsonDevice(Device):
         https://www.netio-products.com/files/NETIO-M2M-API-Protocol-JSON.pdf
         """
 
-        try:
-            rj = response.json()
-        except ValueError:
-            raise CommunicationError("Response does not contain valid json")
-
         if response.status_code == 400:
             raise CommunicationError('Control command syntax error')
 
@@ -144,6 +139,12 @@ class JsonDevice(Device):
 
         if not response.ok:
             raise CommunicationError("Communication with device failed")
+
+        try:
+            rj = response.json()
+        except ValueError:
+            raise CommunicationError("Response does not contain valid json")
+
         return rj
 
     def _post(self, body: dict) -> dict:
