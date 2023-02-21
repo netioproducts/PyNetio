@@ -32,3 +32,7 @@ All notable changes to this project will be documented in this file.
 ## [1.0.6] - 2021-04-07
 ### Added
  - fix argparse for python 3.6
+
+## [1.0.8] - 2023-02-21
+### Added
+ - timeout parameter to JsonDevice

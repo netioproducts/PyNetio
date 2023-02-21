@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="Netio",
-    version="1.0.7",
+    version="1.0.8",
     author="Adam Verner",
     author_email="averner@netio.eu",
     license="MIT",
