@@ -1,0 +1,33 @@
+[build-system]
+requires      = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "Netio"
+version = "1.0.9"
+description = "Interface to control NETIO Products devices"
+readme = "README.md"
+authors = [{ name = "Adam Verner", email = "averner@netio.eu" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3.6",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+]
+keywords = ["feed", "reader", "tutorial"]
+dependencies = [
+    'requests>=2.23', 
+    'pyOpenSSL>=19.0',
+]
+requires-python = ">=3.6"
+
+[project.urls]
+Homepage = "https://github.com/netioproducts/PyNetio"
+
+[project.scripts]
+Netio = 'Netio.cli:main'
+
