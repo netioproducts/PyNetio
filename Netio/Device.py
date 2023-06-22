@@ -155,7 +155,7 @@ class JsonDevice(Device):
                 data=json.dumps(body),
                 auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
                 verify=self._verify,
-                timeout=self.timeout,
+                timeout=self._timeout,
             )
         except requests.exceptions.SSLError:
             raise AuthError("Invalid certificate")
