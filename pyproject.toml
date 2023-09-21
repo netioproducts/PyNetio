@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Netio"
-version = "1.0.11"
+version = "1.0.12"
 description = "Interface to control NETIO Products devices"
 authors = ["Adam Verner <averner@netio.eu>"]
 readme = "README.md"

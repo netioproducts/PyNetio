@@ -1,16 +1,15 @@
-import collections
-from abc import abstractmethod
-
-import requests
-import logging
+import dataclasses
 import json
+from abc import abstractmethod, ABC
 from enum import IntEnum
 from typing import Dict, List
+
+import requests
 
 from Netio.exceptions import CommunicationError, AuthError, UnknownOutputId
 
 
-class Device(object):
+class Device(ABC):
     """
     Template device with simple api. Provide _get_outputs and _set_outputs functions
     """
@@ -31,11 +30,50 @@ class Device(object):
         NOCHANGE = 5
         IGNORED = 6
 
-    DeviceName: str = ''
-    SerialNumber: str = 'Unknown'
+    DeviceName: str = ""
+    SerialNumber: str = "Unknown"
     NumOutputs: int = 0
 
-    OUTPUT = collections.namedtuple("Output", "ID Name State Action Delay Current PowerFactor Load Energy")
+    @dataclasses.dataclass
+    class OUTPUT:
+        ID: int
+        """Output ID"""
+
+        Name: str
+        """Output name"""
+
+        State: int
+        """Output state"""
+
+        Action: "Device.ACTION"
+        """"""
+
+        Delay: int
+        """[ms] Output delay for short On/Off"""
+
+        Current: float
+        """[mA] Electric current for the output"""
+
+        PowerFactor: float
+        """[-] TPF True Power Factor for the output"""
+
+        Phase: float
+        """[°] Phase for the specific power output"""
+
+        Energy: float
+        """[Wh] Counter of Energy consumed per output (resettable)"""
+
+        Energy_NR: float
+        """[Wh] Not Resettable counter of output consumed Energy"""
+
+        ReverseEnergy: float
+        """[Wh] Counter of Energy produced per output (resettable)"""
+
+        ReverseEnergy_NR: float
+        """[Wh] Not Resettable counter of Reversed (produced) Energy"""
+
+        Load: float
+        """[W] Instantaneous load (power) for the specific power output"""
 
     @abstractmethod
     def __init__(self, *args, **kwargs):
@@ -43,14 +81,14 @@ class Device(object):
 
     @abstractmethod
     def _get_outputs(self) -> List[OUTPUT]:
-        """ Return list of all outputs in format of self.OUTPUT """
+        """Return list of all outputs in format of self.OUTPUT"""
 
     @abstractmethod
     def _set_outputs(self, actions: Dict[int, ACTION]) -> None:
-        """ Set multiple outputs. """
+        """Set multiple outputs."""
 
     def get_outputs(self) -> List[OUTPUT]:
-        """ Returns list of available sockets and their state"""
+        """Returns list of available sockets and their state"""
         return self._get_outputs()
 
     def get_outputs_filtered(self, ids):
@@ -63,7 +101,7 @@ class Device(object):
                 raise UnknownOutputId("Invalid output ID")
 
     def get_output(self, id: int) -> OUTPUT:
-        """ Get state of single socket by its id """
+        """Get state of single socket by its id"""
         outputs = self.get_outputs()
         try:
             return next(filter(lambda output: output.ID == id, outputs))
@@ -89,7 +127,17 @@ class Device(object):
 
 
 class JsonDevice(Device):
-    def __init__(self, url, auth_r=None, auth_rw=None, verify=None, skip_init=False, timeout=None):
+    def __init__(
+        self, url, auth_r=None, auth_rw=None, verify=None, skip_init=False, timeout=None
+    ):
+        """
+        :param url: url to device
+        :param auth_r: tuple of (username, password) for read-only access
+        :param auth_rw: tuple of (username, password) for read-write access
+        :param verify: verify ssl certificate
+        :param skip_init: skip initialization of device
+        :param timeout: timeout for requests (in seconds)
+        """
         self._url = url
         self._verify = verify
         self._timeout = timeout
@@ -109,7 +157,6 @@ class JsonDevice(Device):
             self.init()
 
     def init(self):
-
         # request information about the Device
         r_json = self._get()
 
@@ -119,7 +166,7 @@ class JsonDevice(Device):
 
     def get_info(self):
         r_json = self._get()
-        r_json.pop('Outputs')
+        r_json.pop("Outputs")
         return r_json
 
     @staticmethod
@@ -130,13 +177,13 @@ class JsonDevice(Device):
         """
 
         if response.status_code == 400:
-            raise CommunicationError('Control command syntax error')
+            raise CommunicationError("Control command syntax error")
 
         if response.status_code == 401:
-            raise AuthError('Invalid Username or Password')
+            raise AuthError("Invalid Username or Password")
 
         if response.status_code == 403:
-            raise AuthError('Insufficient permissions to write')
+            raise AuthError("Insufficient permissions to write")
 
         if not response.ok:
             raise CommunicationError("Communication with device failed")
@@ -165,9 +212,9 @@ class JsonDevice(Device):
     def _get(self) -> dict:
         try:
             response = requests.get(
-                self._url, 
-                auth=requests.auth.HTTPBasicAuth(self._user, self._pass), 
-                verify=self._verify, 
+                self._url,
+                auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
+                verify=self._verify,
                 timeout=self._timeout,
             )
         except requests.exceptions.SSLError:
@@ -185,17 +232,21 @@ class JsonDevice(Device):
 
         outputs = list()
 
-        for output in r_json.get('Outputs'):
+        for output in r_json.get("Outputs"):
             state = self.OUTPUT(
-                ID=output.get("ID"),
-                Name=output.get("Name"),
-                State=output.get("State"),
+                ID=output.get("ID", None),
+                Name=output.get("Name", None),
+                State=output.get("State", None),
                 Action=self.ACTION(output.get("Action")),
-                Delay=output.get("Delay"),
-                Current=output.get("Current"),
-                PowerFactor=output.get("PowerFactor"),
-                Load=output.get("Load"),
-                Energy=output.get("Energy"),
+                Delay=output.get("Delay", None),
+                Current=output.get("Current", None),
+                PowerFactor=output.get("PowerFactor", None),
+                Phase=output.get("Phase", None),
+                Energy=output.get("Energy", None),
+                Energy_NR=output.get("Energy_NR", None),
+                ReverseEnergy=output.get("ReverseEnergy", None),
+                ReverseEnergy_NR=output.get("ReverseEnergy_NR", None),
+                Load=output.get("Load", None),
             )
             outputs.append(state)
         return outputs
@@ -203,7 +254,7 @@ class JsonDevice(Device):
     def _set_outputs(self, actions: dict) -> dict:
         outputs = []
         for id, action in actions.items():
-            outputs.append({'ID': id, 'Action': action})
+            outputs.append({"ID": id, "Action": action})
 
         body = {"Outputs": outputs}
 
