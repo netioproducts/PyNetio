@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Netio"
-version = "1.0.12"
+version = "1.0.13"
 description = "Interface to control NETIO Products devices"
 authors = ["Adam Verner <averner@netio.eu>"]
 readme = "README.md"
@@ -48,4 +48,4 @@ build-backend = "poetry.core.masonry.api"
 
 #define the scirpt to be runnable using CLI
 [tool.poetry.scripts]
-netio = "Netio.cli:main"
+Netio = "Netio.cli:main"
