@@ -1,33 +1,51 @@
-[build-system]
-requires      = ["setuptools>=61.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "Netio"
-version = "1.0.10"
+version = "1.0.11"
 description = "Interface to control NETIO Products devices"
+authors = ["Adam Verner <averner@netio.eu>"]
 readme = "README.md"
-authors = [{ name = "Adam Verner", email = "averner@netio.eu" }]
-license = { file = "LICENSE" }
+repository = "https://github.com/netioproducts/PyNetio"
+packages = [{include = "Netio"}]
+license = "MIT"
+keywords = ["netio", "netio products", "power control", "power management", "power monitoring", "power metering",
+    "power switching", "power switching device", "power switching devices", "power switching products",
+    "power switching products"]
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Development Status :: 5 - Production/Stable",
+    "Natural Language :: English",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3.6",
-    "Intended Audience :: Developers",
-    "Natural Language :: English",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Home Automation",
+    "Topic :: System :: Hardware :: Hardware Drivers",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Power (UPS)",
+    "Topic :: Utilities",
 ]
-keywords = ["feed", "reader", "tutorial"]
-dependencies = [
-    'requests>=2.23', 
-    'pyOpenSSL>=19.0',
-]
-requires-python = ">=3.6"
 
-[project.urls]
-Homepage = "https://github.com/netioproducts/PyNetio"
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.31.0"
+pyopenssl = "^23.2.0"
 
-[project.scripts]
-Netio = 'Netio.cli:main'
+[tool.poetry.group.test.dependencies]
+pytest = "^7.4.2"
+requests-mock = "^1.11.0"
+setuptools = "^68.2.2"
 
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+#define the scirpt to be runnable using CLI
+[tool.poetry.scripts]
+netio = "Netio.cli:main"
