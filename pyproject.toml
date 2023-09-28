@@ -33,7 +33,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.6"
 requests = "^2.31.0"
 pyopenssl = "^23.2.0"
 
@@ -43,7 +43,7 @@ requests-mock = "^1.11.0"
 setuptools = "^68.2.2"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.2.0"]
 build-backend = "poetry.core.masonry.api"
 
 #define the scirpt to be runnable using CLI
