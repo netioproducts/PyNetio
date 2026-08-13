@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from Netio import Netio
-from Netio.cli import command_info, get_ids, get_output_actions, str2action
+from Netio.cli import command_info, get_ids, get_output_actions, load_config, str2action
 from Netio.exceptions import NetioException
 
 EXAMPLE_CONFIG = Path(__file__).parents[1] / 'examples' / 'netio.example.ini'
