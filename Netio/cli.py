@@ -6,12 +6,11 @@ Netio Command line interface
 import argparse
 import configparser
 import os
-import pkg_resources
 import requests
 import sys
 import traceback
 
-from . import Netio
+from . import Netio, __version__
 from .exceptions import NetioException
 from typing import List
 from urllib.parse import urlparse, urlunparse
@@ -21,7 +20,7 @@ def str2action(s: str) -> Netio.ACTION:
     """Parse Device.ACTION, either by name or by integer representation """
     try:
         return Netio.ACTION[s.upper()]
-    except KeyError or AttributeError:
+    except (KeyError, AttributeError):
         try:
             return Netio.ACTION(int(s))
         except ValueError:
@@ -80,7 +79,7 @@ def get_ids(id_strs: List[str], num_outputs: int) -> List[int]:
             individual_outputs_mode = True
             result.append(int(id_str))
         else:
-            raise NetioException(f"Invalid output ID '{id_str}', valid range is {1}-{num_outputs + 1} or 'ALL'")
+            raise NetioException(f"Invalid output ID '{id_str}', valid range is 1-{num_outputs} or 'ALL'")
 
     return result
 
@@ -122,7 +121,7 @@ def get_output_actions(ids_and_actions, num_outputs):
             action = str2action(action_str)
             result[id] = action
         else:
-            raise NetioException(f"Invalid output ID '{id_str}', valid range is {1}-{max_id} or 'ALL'")
+            raise NetioException(f"Invalid output ID '{id_str}', valid range is 1-{num_outputs} or 'ALL'")
 
     return result
 
@@ -176,12 +175,7 @@ def parse_args():
         help="Disable warnings about certificate's subjectAltName versus commonName",
     )
 
-    try:
-        version = pkg_resources.require("Netio")[0].version
-    except pkg_resources.DistributionNotFound:
-        version = 'Unknown'
-
-    parser.add_argument("--version", action="version", version=f"%(prog)s (version {version})")
+    parser.add_argument("--version", action="version", version=f"%(prog)s (version {__version__})")
 
     command_parser = parser.add_subparsers(metavar="COMMAND", help="device command")
     command_parser.required = True
@@ -273,13 +267,33 @@ def command_get(device: Netio, args: argparse.Namespace) -> None:
         print(o.ID, o.State, action, o.Delay, o.Current, o.PowerFactor, o.Load, o.Energy, o.Name, sep=args.delim)
 
 
+def _print_values(values: dict, indent: str) -> None:
+    """ Print name and value on one line each, with the values lined up """
+    width = max((len(name) for name in values), default=0)
+    for name, value in values.items():
+        print(f'{indent}{name:<{width}}  {value}')
+
+
 def command_info(device: Netio, args: argparse.Namespace) -> None:
     """ Print out all data from device info """
-    for key, data in device.get_info().items():
-        print(key)
-        for subkey, value in data.items():
-            pad = 18 - len(subkey)
-            print('  ', subkey, ' ' * pad, value)
+
+    # A section is either a group of values, such as Agent, or a list of items,
+    # such as Inputs, Watchdogs or Rules. Which sections the device sends
+    # depends on the model and on the firmware version.
+    for name, section in device.get_info().items():
+        print(name)
+
+        if isinstance(section, dict):
+            _print_values(section, '   ')
+        elif isinstance(section, list):
+            for number, item in enumerate(section, start=1):
+                print(f'   [{number}]')
+                if isinstance(item, dict):
+                    _print_values(item, '      ')
+                else:
+                    print(f'      {item}')
+        else:
+            print(f'   {section}')
 
 
 if __name__ == "__main__":

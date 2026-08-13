@@ -63,13 +63,13 @@ class Device(ABC):
         Energy: float
         """[Wh] Counter of Energy consumed per output (resettable)"""
 
-        Energy_NR: float
+        EnergyNR: float
         """[Wh] Not Resettable counter of output consumed Energy"""
 
         ReverseEnergy: float
         """[Wh] Counter of Energy produced per output (resettable)"""
 
-        ReverseEnergy_NR: float
+        ReverseEnergyNR: float
         """[Wh] Not Resettable counter of Reversed (produced) Energy"""
 
         Load: float
@@ -164,9 +164,16 @@ class JsonDevice(Device):
         self.DeviceName = r_json["Agent"]["DeviceName"]
         self.SerialNumber = r_json["Agent"]["SerialNumber"]
 
-    def get_info(self):
+    def get_info(self) -> dict:
+        """
+        Return everything the device reports about itself, without the output list.
+
+        Which sections are present depends on the device. Devices that do not
+        measure power leave out GlobalMeasure, and devices without inputs leave
+        out Inputs.
+        """
         r_json = self._get()
-        r_json.pop("Outputs")
+        r_json.pop("Outputs", None)
         return r_json
 
     @staticmethod
@@ -232,7 +239,7 @@ class JsonDevice(Device):
 
         outputs = list()
 
-        for output in r_json.get("Outputs"):
+        for output in r_json.get("Outputs") or []:
             state = self.OUTPUT(
                 ID=output.get("ID", None),
                 Name=output.get("Name", None),
@@ -243,21 +250,21 @@ class JsonDevice(Device):
                 PowerFactor=output.get("PowerFactor", None),
                 Phase=output.get("Phase", None),
                 Energy=output.get("Energy", None),
-                Energy_NR=output.get("Energy_NR", None),
+                EnergyNR=output.get("EnergyNR", output.get("Energy_NR", None)),
                 ReverseEnergy=output.get("ReverseEnergy", None),
-                ReverseEnergy_NR=output.get("ReverseEnergy_NR", None),
+                ReverseEnergyNR=output.get("ReverseEnergyNR", output.get("ReverseEnergy_NR", None)),
                 Load=output.get("Load", None),
             )
             outputs.append(state)
         return outputs
 
-    def _set_outputs(self, actions: dict) -> dict:
+    def _set_outputs(self, actions: dict) -> None:
         outputs = []
         for id, action in actions.items():
             outputs.append({"ID": id, "Action": action})
 
         body = {"Outputs": outputs}
 
-        return self._post(body)
+        self._post(body)
 
         # TODO verify response action
