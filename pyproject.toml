@@ -1,50 +1,41 @@
-[tool.poetry]
+[project]
 name = "Netio"
 version = "1.0.13"
 description = "Interface to control NETIO Products devices"
-authors = ["Adam Verner <averner@netio.eu>"]
+authors = [{ name = "Adam Verner", email = "averner@netio.eu" }]
 readme = "README.md"
-repository = "https://github.com/netioproducts/PyNetio"
-packages = [{include = "Netio"}]
 license = "MIT"
-keywords = ["netio", "netio products", "power control", "power management", "power monitoring", "power metering",
-    "power switching", "power switching device", "power switching devices", "power switching products",
-    "power switching products"]
+requires-python = ">=3.11"
+keywords = ["netio", "pdu", "power switching", "power monitoring", "home automation"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
-    "Natural Language :: English",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
-    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Programming Language :: Python :: 3",
     "Topic :: Home Automation",
     "Topic :: System :: Hardware :: Hardware Drivers",
     "Topic :: System :: Monitoring",
     "Topic :: System :: Power (UPS)",
-    "Topic :: Utilities",
+]
+dependencies = [
+    "requests>=2.32,<3.0",
 ]
 
-[tool.poetry.dependencies]
-python = "^3.7"
-requests = "^2.31.0"
-pyopenssl = "^23.2.0"
+[project.urls]
+Repository = "https://github.com/netioproducts/PyNetio"
+Changelog = "https://github.com/netioproducts/PyNetio/blob/master/CHANGELOG.md"
+
+[project.scripts]
+Netio = "Netio.cli:main"
+
+[tool.poetry]
+# Without this, poetry-core auto-detects the package and lowercases it to
+# `netio/`, which breaks `import Netio` on a case sensitive filesystem.
+packages = [{ include = "Netio" }]
 
 [tool.poetry.group.test.dependencies]
-pytest = "^7.4.2"
-requests-mock = "^1.11.0"
-setuptools = "^68.2.2"
+pytest = "^8.3"
+requests-mock = "^1.12"
 
 [build-system]
-requires = ["poetry-core>=1.2.0"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-#define the scirpt to be runnable using CLI
-[tool.poetry.scripts]
-Netio = "Netio.cli:main"
