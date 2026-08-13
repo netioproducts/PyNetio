@@ -9,6 +9,14 @@ Needs Python 3.11 or newer.
 pip install Netio --upgrade
 ```
 
+With poetry or uv instead of pip:
+
+```bash
+poetry add Netio        # as a project dependency
+uv add Netio            # as a project dependency
+uv tool install Netio   # just the Netio command, globally
+```
+
 Log in to your device and switch on the JSON API. Allow write access if you
 want to switch outputs and not just read them.
 
