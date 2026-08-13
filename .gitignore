@@ -5,10 +5,44 @@ Netio.egg-info/
 __pycache__/
 venv/
 VirtualEnv/
+.venv/
 
+# editors and IDEs
 .idea/
-
+.vscode/
+*.code-workspace
+.fleet/
+.project
+.pydevproject
+.settings/
+.spyderproject
+.spyproject
+.ropeproject
+*.sublime-project
+*.sublime-workspace
 .*.swp
+.*.swo
+
+# AI assistants
+.claude/
+CLAUDE.local.md
+.cursor/
+.cursorrules
+.cursorignore
+.aider*
+.continue/
+.windsurf/
+.windsurfrules
+.github/copilot-instructions.md
+.codeium/
+.gemini/
+.junie/
+.qodo/
+llm.log
+
+# OS
+.DS_Store
+Thumbs.db
 
 netio.ini
 entrypoint.spec
