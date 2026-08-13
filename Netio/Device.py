@@ -6,7 +6,13 @@ from enum import IntEnum
 
 import requests
 
-from Netio.exceptions import AuthError, CommunicationError, NetioException, UnknownInputId, UnknownOutputId
+from Netio.exceptions import (
+    AuthError,
+    CommunicationError,
+    NetioException,
+    UnknownInputId,
+    UnknownOutputId,
+)
 
 SENSOR_NOT_CONNECTED = 999
 """
@@ -214,7 +220,9 @@ class JsonDevice(Device):
     https://www.netio-products.com/files/NETIO-M2M-API-Protocol-JSON.pdf
     """
 
-    def __init__(self, url, auth_r=None, auth_rw=None, verify=None, skip_init=False, timeout=None):
+    def __init__(
+        self, url, auth_r=None, auth_rw=None, verify=None, skip_init=False, timeout=None
+    ):
         """
         :param url: url to device
         :param auth_r: tuple of (username, password) for read-only access
@@ -281,7 +289,9 @@ class JsonDevice(Device):
                 # Firmware up to 4.x spells these with an underscore
                 EnergyNR=output.get("EnergyNR", output.get("Energy_NR")),
                 ReverseEnergy=output.get("ReverseEnergy"),
-                ReverseEnergyNR=output.get("ReverseEnergyNR", output.get("ReverseEnergy_NR")),
+                ReverseEnergyNR=output.get(
+                    "ReverseEnergyNR", output.get("ReverseEnergy_NR")
+                ),
                 Load=output.get("Load"),
             )
             for output in self._request().get("Outputs") or []
@@ -303,7 +313,13 @@ class JsonDevice(Device):
         ]
 
     def _set_outputs(self, actions: dict[int, Device.ACTION]) -> None:
-        self._request({"Outputs": [{"ID": id, "Action": action} for id, action in actions.items()]})
+        self._request(
+            {
+                "Outputs": [
+                    {"ID": id, "Action": action} for id, action in actions.items()
+                ]
+            }
+        )
 
         # TODO verify response action
 

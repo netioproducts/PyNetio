@@ -42,8 +42,9 @@ jobs:
 
       - run: poetry install --no-interaction
 
-      # Only the tests that need no network. The live tests are left out on
-      # purpose: they need the public demo devices, which are not always up.
+      - run: poetry run ruff check --output-format=github
+
+      # live tests are excluded.
       - run: poetry run pytest
 
   live:

@@ -25,7 +25,7 @@ SWITCH_DELAY = 2
 
 def device_name(url: str) -> str:
     """Turn a demo URL into a short name, so test output stays readable."""
-    return url.split('//')[1].split('.')[0]
+    return url.split("//")[1].split(".")[0]
 
 
 @pytest.fixture(params=DEMO_DEVICES, ids=device_name)
@@ -35,22 +35,26 @@ def demo_device(request) -> Netio:
 
 def test_read_and_switch_a_real_device(demo_device: Netio):
     """Read the device, switch output 1 over, and put it back the way it was."""
-    assert demo_device.SerialNumber != 'Unknown'
+    assert demo_device.SerialNumber != "Unknown"
     assert demo_device.NumOutputs > 0
 
     info = demo_device.get_info()
-    assert 'Outputs' not in info
-    assert info['Agent']['Version'].startswith('5.'), 'expected firmware 5.x'
+    assert "Outputs" not in info
+    assert info["Agent"]["Version"].startswith("5."), "expected firmware 5.x"
 
     outputs = demo_device.get_outputs()
     assert len(outputs) == demo_device.NumOutputs
-    assert [output.ID for output in outputs] == list(range(1, demo_device.NumOutputs + 1))
+    assert [output.ID for output in outputs] == list(
+        range(1, demo_device.NumOutputs + 1)
+    )
 
     was_on = demo_device.get_output(1).State == 1
     try:
         demo_device.set_output(1, Netio.ACTION.OFF if was_on else Netio.ACTION.ON)
         time.sleep(SWITCH_DELAY)
-        assert demo_device.get_output(1).State == (0 if was_on else 1), 'output did not switch'
+        assert demo_device.get_output(1).State == (0 if was_on else 1), (
+            "output did not switch"
+        )
     finally:
         # leave the demo device the way we found it
         demo_device.set_output(1, Netio.ACTION.ON if was_on else Netio.ACTION.OFF)
@@ -71,4 +75,4 @@ def test_read_the_inputs_of_a_real_device(demo_device: Netio):
     for reading in inputs:
         assert reading.State in (0, 1)
         assert reading.S0Counter >= 0
-        assert reading.TemperatureC is None, 'demo devices have no sensor connected'
+        assert reading.TemperatureC is None, "demo devices have no sensor connected"
