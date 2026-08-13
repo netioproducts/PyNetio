@@ -1,57 +1,80 @@
-name: add tag and Publish to PyPi
+name: publish to PyPI
 
-on: [push, workflow_dispatch]
+# Publishing happens when a version tag is pushed, for example:
+#
+#     git tag v2.0.0 && git push origin v2.0.0
+on:
+  push:
+    tags:
+      - "v*"
 
 jobs:
-
-  test-job:
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [ "3.7", "3.8", "3.9", "3.10", "3.11" ]
+  # Nothing else gates a tagged release on the test suite, so run it here.
+  test:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.13"
 
-      - name: cache poetry install
-        uses: actions/cache@v2
+      - name: install poetry
+        uses: snok/install-poetry@v1
         with:
-          path: ~/.local
-          key: poetry-1.1.12-0
+          version: 2.4.1
 
-      - uses: snok/install-poetry@v1
-        with:
-          version: 1.6.1
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-
-      - name: cache deps
-        id: cache-deps
-        uses: actions/cache@v2
-        with:
-          path: .venv
-          key: pydeps-${{ hashFiles('poetry.lock') }}-${{ matrix.python-version }}
-
-      # install dependencies (and cache them)
-      - run: poetry install --no-interaction --no-root
-        if: steps.cache-deps.outputs.cache-hit != 'true'
-
-      # install PyNetio itself
       - run: poetry install --no-interaction
+
       - run: poetry run pytest
 
-  publish-job:
-    if: github.ref == 'refs/heads/master'
+  build:
+    needs: [test]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
-     - uses: etils-actions/pypi-auto-publish@v1.5.1
-       with:
-         pypi-token: ${{ secrets.PYPI_TOKEN }}
-         # gh-token: ${{ secrets.GH_TOKEN }}
-    needs: [test-job]
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: install poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: 2.4.1
+
+      - name: check that the tag matches the version in pyproject.toml
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(poetry version --short)"
+          if [ "$tag" != "$version" ]; then
+            echo "tag $tag does not match project version $version"
+            exit 1
+          fi
+
+      - run: poetry build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: [build]
+    runs-on: ubuntu-latest
+
+    # Needed for trusted publishing, so that no PyPI token has to be stored.
+    # Set this up once at https://pypi.org/manage/project/netio/settings/publishing/
+    environment: pypi
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

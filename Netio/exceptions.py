@@ -11,4 +11,8 @@ class AuthError(NetioException):
 
 
 class UnknownOutputId(NetioException):
-    """ Unknown output ID """
+    """Unknown output ID"""
+
+
+class UnknownInputId(NetioException):
+    """Unknown input ID"""
