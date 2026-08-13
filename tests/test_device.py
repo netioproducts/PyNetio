@@ -3,9 +3,22 @@
 import pytest
 
 from Netio import Netio
-from Netio.exceptions import AuthError, CommunicationError, UnknownOutputId
+from Netio.exceptions import AuthError, CommunicationError, UnknownInputId, UnknownOutputId
 
 from .conftest import URL
+
+
+def test_the_device_submodule_is_not_shadowed():
+    """
+    `Netio.Device` has to stay the module.
+
+    Exporting the Device class from the package under the same name hides the
+    submodule, and `Netio.Device.JsonDevice` then stops working.
+    """
+    import Netio as package
+    import Netio.Device  # noqa: F401
+
+    assert package.Device.JsonDevice is package.Netio
 
 
 def test_read_a_device_that_measures_power(make_device, response_8qs):
@@ -29,8 +42,7 @@ def test_read_a_device_that_measures_power(make_device, response_8qs):
     assert measured.Name == 'Dream Machine'
     assert measured.Action is Netio.ACTION.IGNORED
     assert measured.Energy == 43078
-    # The device sends these as EnergyNR and ReverseEnergyNR. Reading them
-    # under the wrong name used to leave them empty on every real device.
+    # The device sends these as EnergyNR and ReverseEnergyNR, not Energy_NR.
     assert measured.EnergyNR == 154263
     assert measured.ReverseEnergyNR == 66452
 
@@ -143,4 +155,69 @@ def test_skip_init_does_not_talk_to_the_device(requests_mock):
     device = Netio(URL, auth_rw=('user', 'pass'), skip_init=True)
 
     assert device.NumOutputs == 0
+    assert device.NumInputs == 0
     assert not requests_mock.called
+
+
+def test_read_the_inputs_of_a_device_that_has_them(make_device, response_4pz):
+    """
+    Walk through reading the two inputs of a PowerDIN 4PZ.
+
+    No sensor is connected to either input, so the device sends 999 for the
+    temperature and the humidity and we report nothing instead.
+    """
+    device = make_device(response_4pz)
+
+    assert device.NumInputs == 2
+
+    inputs = device.get_inputs()
+    assert [input.ID for input in inputs] == [1, 2]
+
+    first = device.get_input(1)
+    assert first.Name == 'Input 1'
+    assert first.State == 0
+    assert first.S0Counter == 0
+    assert first.TemperatureC is None
+    assert first.TemperatureF is None
+    assert first.Humidity is None
+
+    # the counter keeps its value, only measurements use 999
+    assert device.get_input(2).S0Counter == 1
+
+
+@pytest.mark.parametrize('field', ['TemperatureC', 'TempertureC'])
+def test_a_connected_sensor_reports_its_values(make_device, response_4pz, field):
+    """
+    Read an input that has a sensor on it.
+
+    Firmware up to 5.0.x spells the field 'TempertureC', without the second
+    'a'. Both spellings have to be understood, or the temperature is missing on
+    whichever devices we fail to match.
+    """
+    sensor = {'ID': 1, 'Name': 'Temp_sensor', 'State': 0, 'S0Counter': 34,
+              field: 26.3, 'TemperatureF': 79.3, 'Humidity': 47.5}
+    response_4pz['Inputs'] = [sensor]
+
+    reading = make_device(response_4pz).get_input(1)
+
+    assert reading.TemperatureC == 26.3
+    assert reading.TemperatureF == 79.3
+    assert reading.Humidity == 47.5
+
+
+def test_a_device_without_inputs(make_device, response_2pz):
+    """A PowerCable 2PZ has no inputs and sends no Inputs section at all."""
+    device = make_device(response_2pz)
+
+    assert device.NumInputs == 0
+    assert device.get_inputs() == []
+
+
+def test_asking_for_an_input_that_does_not_exist(make_device, response_4pz):
+    device = make_device(response_4pz)
+
+    with pytest.raises(UnknownInputId):
+        device.get_input(99)
+
+    with pytest.raises(UnknownInputId):
+        list(device.get_inputs_filtered([1, 99]))

@@ -1,20 +1,33 @@
 import dataclasses
 import json
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
+from collections.abc import Iterable, Iterator
 from enum import IntEnum
-from typing import Dict, List
 
 import requests
 
-from Netio.exceptions import CommunicationError, AuthError, UnknownOutputId
+from Netio.exceptions import AuthError, CommunicationError, NetioException, UnknownInputId, UnknownOutputId
+
+SENSOR_NOT_CONNECTED = 999
+"""
+Value the device sends for a measurement it cannot make.
+
+A temperature or humidity input reports 999 when no sensor is connected or when
+the sensor failed. `get_inputs` turns that into None, so an unread value looks
+the same as a value the device does not report at all. `get_info` returns the
+device's data untranslated, so 999 passes through there.
+"""
 
 
 class Device(ABC):
     """
-    Template device with simple api. Provide _get_outputs and _set_outputs functions
-    """
+    A NETIO device.
 
-    _write_access = False
+    A subclass talks to the hardware and provides `init`, `get_info`,
+    `get_outputs`, `get_inputs` and `_set_outputs`. Everything that does not
+    depend on the protocol lives here: picking single outputs out of the list,
+    and refusing to write without write access.
+    """
 
     class ACTION(IntEnum):
         """
@@ -30,12 +43,15 @@ class Device(ABC):
         NOCHANGE = 5
         IGNORED = 6
 
-    DeviceName: str = ""
-    SerialNumber: str = "Unknown"
-    NumOutputs: int = 0
-
     @dataclasses.dataclass
     class OUTPUT:
+        """
+        One power output of the device.
+
+        A field is None when the device does not report it. Only some models
+        measure power, and on some of those only the first output does.
+        """
+
         ID: int
         """Output ID"""
 
@@ -43,81 +59,146 @@ class Device(ABC):
         """Output name"""
 
         State: int
-        """Output state"""
+        """Output state, 0 for off and 1 for on"""
 
         Action: "Device.ACTION"
-        """"""
+        """Last action carried out on the output"""
 
-        Delay: int
+        Delay: int | None
         """[ms] Output delay for short On/Off"""
 
-        Current: float
+        Current: float | None
         """[mA] Electric current for the output"""
 
-        PowerFactor: float
+        PowerFactor: float | None
         """[-] TPF True Power Factor for the output"""
 
-        Phase: float
+        Phase: float | None
         """[°] Phase for the specific power output"""
 
-        Energy: float
+        Energy: float | None
         """[Wh] Counter of Energy consumed per output (resettable)"""
 
-        EnergyNR: float
+        EnergyNR: float | None
         """[Wh] Not Resettable counter of output consumed Energy"""
 
-        ReverseEnergy: float
+        ReverseEnergy: float | None
         """[Wh] Counter of Energy produced per output (resettable)"""
 
-        ReverseEnergyNR: float
+        ReverseEnergyNR: float | None
         """[Wh] Not Resettable counter of Reversed (produced) Energy"""
 
-        Load: float
+        Load: float | None
         """[W] Instantaneous load (power) for the specific power output"""
 
-    @abstractmethod
-    def __init__(self, *args, **kwargs):
-        pass
+    @dataclasses.dataclass
+    class INPUT:
+        """
+        One digital input (DI) of the device.
+
+        Inputs can only be read. Which fields hold a value depends on what is
+        connected: a field is None when the device does not send it, and also
+        when it sends 999 to say that no sensor is connected.
+        """
+
+        ID: int
+        """Input ID"""
+
+        Name: str
+        """Input name"""
+
+        State: int
+        """State of the contact, 0 for open and 1 for closed"""
+
+        S0Counter: int | None
+        """[-] Number of S0 pulses counted on the input (resettable)"""
+
+        TemperatureC: float | None
+        """[°C] Temperature, None when no sensor is connected"""
+
+        TemperatureF: float | None
+        """[°F] Temperature, None when no sensor is connected"""
+
+        Humidity: float | None
+        """[%] Relative humidity, None when no sensor is connected"""
+
+    def __init__(self) -> None:
+        self.DeviceName: str = ""
+        self.SerialNumber: str = "Unknown"
+        self.NumOutputs: int = 0
+        self.NumInputs: int = 0
+        self._write_access: bool = False
 
     @abstractmethod
-    def _get_outputs(self) -> List[OUTPUT]:
-        """Return list of all outputs in format of self.OUTPUT"""
+    def init(self) -> None:
+        """Read the device description and fill in DeviceName, NumOutputs and the rest"""
 
     @abstractmethod
-    def _set_outputs(self, actions: Dict[int, ACTION]) -> None:
-        """Set multiple outputs."""
+    def get_info(self) -> dict:
+        """Return everything the device reports about itself, without the output list"""
 
-    def get_outputs(self) -> List[OUTPUT]:
-        """Returns list of available sockets and their state"""
-        return self._get_outputs()
+    @abstractmethod
+    def get_outputs(self) -> list[OUTPUT]:
+        """Return the state of every output"""
 
-    def get_outputs_filtered(self, ids):
-        """ """
-        outputs = self.get_outputs()
-        for i in ids:
+    @abstractmethod
+    def get_inputs(self) -> list[INPUT]:
+        """Return the state of every input. Empty on a device that has none."""
+
+    @abstractmethod
+    def _set_outputs(self, actions: dict[int, ACTION]) -> None:
+        """
+        Carry out one action per output.
+
+        Called by `set_outputs`, which is what checks that we may write at all.
+        """
+
+    @staticmethod
+    def _pick(
+        items: Iterable[OUTPUT] | Iterable[INPUT],
+        ids: Iterable[int],
+        name: str,
+        missing: type[NetioException],
+    ) -> Iterator:
+        """
+        Yield the items with the given ids, in the order asked for.
+
+        `missing` is raised for an id the device does not have, and `name` is
+        the word used in that message.
+        """
+        by_id = {item.ID: item for item in items}
+        for id in ids:
             try:
-                yield next(filter(lambda output: output.ID == i, outputs))
-            except StopIteration:
-                raise UnknownOutputId("Invalid output ID")
+                yield by_id[id]
+            except KeyError:
+                raise missing(f"Invalid {name} ID '{id}'") from None
+
+    def get_outputs_filtered(self, ids: Iterable[int]) -> Iterator[OUTPUT]:
+        """Yield only the outputs with the given ids, in the order asked for"""
+        return self._pick(self.get_outputs(), ids, "output", UnknownOutputId)
 
     def get_output(self, id: int) -> OUTPUT:
         """Get state of single socket by its id"""
-        outputs = self.get_outputs()
-        try:
-            return next(filter(lambda output: output.ID == id, outputs))
-        except StopIteration:
-            raise UnknownOutputId("Invalid output ID")
+        return next(self._pick(self.get_outputs(), [id], "output", UnknownOutputId))
 
-    def set_outputs(self, actions: Dict[int, ACTION]) -> None:
+    def get_inputs_filtered(self, ids: Iterable[int]) -> Iterator[INPUT]:
+        """Yield only the inputs with the given ids, in the order asked for"""
+        return self._pick(self.get_inputs(), ids, "input", UnknownInputId)
+
+    def get_input(self, id: int) -> INPUT:
+        """Get state of single input by its id"""
+        return next(self._pick(self.get_inputs(), [id], "input", UnknownInputId))
+
+    def set_outputs(self, actions: dict[int, ACTION]) -> None:
         """
         Set state of multiple outputs at once
         >>> n.set_outputs({1: n.ACTION.ON, 2:n.ACTION.OFF})
         """
         # TODO verify if socket id's are in range
-        if self._write_access:
-            self._set_outputs(actions)
-        else:
+        if not self._write_access:
             raise AuthError("cannot write, without write access")
+
+        self._set_outputs(actions)
 
     def set_output(self, id: int, action: ACTION) -> None:
         self.set_outputs({id: action})
@@ -127,9 +208,13 @@ class Device(ABC):
 
 
 class JsonDevice(Device):
-    def __init__(
-        self, url, auth_r=None, auth_rw=None, verify=None, skip_init=False, timeout=None
-    ):
+    """
+    A device reached over the JSON API.
+
+    https://www.netio-products.com/files/NETIO-M2M-API-Protocol-JSON.pdf
+    """
+
+    def __init__(self, url, auth_r=None, auth_rw=None, verify=None, skip_init=False, timeout=None):
         """
         :param url: url to device
         :param auth_r: tuple of (username, password) for read-only access
@@ -138,31 +223,33 @@ class JsonDevice(Device):
         :param skip_init: skip initialization of device
         :param timeout: timeout for requests (in seconds)
         """
+        super().__init__()
+
         self._url = url
         self._verify = verify
         self._timeout = timeout
 
         # read-write can do read, so we don't need read-only permission
         if auth_rw:
-            self._user = auth_rw[0]
-            self._pass = auth_rw[1]
+            self._user, self._pass = auth_rw
             self._write_access = True
         elif auth_r:
-            self._user = auth_r[0]
-            self._pass = auth_r[1]
+            self._user, self._pass = auth_r
         else:
             raise AuthError("No auth provided.")
 
         if not skip_init:
             self.init()
 
-    def init(self):
-        # request information about the Device
-        r_json = self._get()
+    def init(self) -> None:
+        agent = self._request()["Agent"]
 
-        self.NumOutputs = r_json["Agent"]["NumOutputs"]
-        self.DeviceName = r_json["Agent"]["DeviceName"]
-        self.SerialNumber = r_json["Agent"]["SerialNumber"]
+        self.DeviceName = agent["DeviceName"]
+        self.SerialNumber = agent["SerialNumber"]
+        self.NumOutputs = agent["NumOutputs"]
+        # Devices without inputs still report NumInputs, but older firmware
+        # leaves the field out.
+        self.NumInputs = agent.get("NumInputs", 0)
 
     def get_info(self) -> dict:
         """
@@ -171,10 +258,85 @@ class JsonDevice(Device):
         Which sections are present depends on the device. Devices that do not
         measure power leave out GlobalMeasure, and devices without inputs leave
         out Inputs.
+
+        Values are returned as the device sent them: a measurement it cannot
+        make is 999 here, not None.
         """
-        r_json = self._get()
+        r_json = self._request()
         r_json.pop("Outputs", None)
         return r_json
+
+    def get_outputs(self) -> list[Device.OUTPUT]:
+        return [
+            self.OUTPUT(
+                ID=output.get("ID"),
+                Name=output.get("Name"),
+                State=output.get("State"),
+                Action=self.ACTION(output.get("Action")),
+                Delay=output.get("Delay"),
+                Current=output.get("Current"),
+                PowerFactor=output.get("PowerFactor"),
+                Phase=output.get("Phase"),
+                Energy=output.get("Energy"),
+                # Firmware up to 4.x spells these with an underscore
+                EnergyNR=output.get("EnergyNR", output.get("Energy_NR")),
+                ReverseEnergy=output.get("ReverseEnergy"),
+                ReverseEnergyNR=output.get("ReverseEnergyNR", output.get("ReverseEnergy_NR")),
+                Load=output.get("Load"),
+            )
+            for output in self._request().get("Outputs") or []
+        ]
+
+    def get_inputs(self) -> list[Device.INPUT]:
+        return [
+            self.INPUT(
+                ID=input.get("ID"),
+                Name=input.get("Name"),
+                State=input.get("State"),
+                S0Counter=input.get("S0Counter"),
+                # Firmware up to 5.0.x spells this "TempertureC"
+                TemperatureC=self._measured(input, "TemperatureC", "TempertureC"),
+                TemperatureF=self._measured(input, "TemperatureF"),
+                Humidity=self._measured(input, "Humidity"),
+            )
+            for input in self._request().get("Inputs") or []
+        ]
+
+    def _set_outputs(self, actions: dict[int, Device.ACTION]) -> None:
+        self._request({"Outputs": [{"ID": id, "Action": action} for id, action in actions.items()]})
+
+        # TODO verify response action
+
+    @staticmethod
+    def _measured(input: dict, *names: str) -> float | None:
+        """
+        Read a measured value from an input.
+
+        The device sends 999 when no sensor is connected, which we report as
+        None. Some firmware versions misspell the temperature field, so more
+        than one name can be given.
+        """
+        for name in names:
+            if name in input:
+                value = input[name]
+                return None if value == SENSOR_NOT_CONNECTED else value
+        return None
+
+    def _request(self, body: dict | None = None) -> dict:
+        """Talk to the device. A body makes it a write, no body a read."""
+        try:
+            response = requests.request(
+                "POST" if body is not None else "GET",
+                self._url,
+                data=json.dumps(body) if body is not None else None,
+                auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
+                verify=self._verify,
+                timeout=self._timeout,
+            )
+        except requests.exceptions.SSLError:
+            raise AuthError("Invalid certificate") from None
+
+        return self._parse_response(response)
 
     @staticmethod
     def _parse_response(response: requests.Response) -> dict:
@@ -196,75 +358,6 @@ class JsonDevice(Device):
             raise CommunicationError("Communication with device failed")
 
         try:
-            rj = response.json()
+            return response.json()
         except ValueError:
-            raise CommunicationError("Response does not contain valid json")
-
-        return rj
-
-    def _post(self, body: dict) -> dict:
-        try:
-            response = requests.post(
-                self._url,
-                data=json.dumps(body),
-                auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
-                verify=self._verify,
-                timeout=self._timeout,
-            )
-        except requests.exceptions.SSLError:
-            raise AuthError("Invalid certificate")
-
-        return self._parse_response(response)
-
-    def _get(self) -> dict:
-        try:
-            response = requests.get(
-                self._url,
-                auth=requests.auth.HTTPBasicAuth(self._user, self._pass),
-                verify=self._verify,
-                timeout=self._timeout,
-            )
-        except requests.exceptions.SSLError:
-            raise AuthError("Invalid certificate")
-
-        return self._parse_response(response)
-
-    def _get_outputs(self) -> List[Device.OUTPUT]:
-        """
-        Send empty GET request to the device.
-        Parse out the output states according to specification.
-        """
-
-        r_json = self._get()
-
-        outputs = list()
-
-        for output in r_json.get("Outputs") or []:
-            state = self.OUTPUT(
-                ID=output.get("ID", None),
-                Name=output.get("Name", None),
-                State=output.get("State", None),
-                Action=self.ACTION(output.get("Action")),
-                Delay=output.get("Delay", None),
-                Current=output.get("Current", None),
-                PowerFactor=output.get("PowerFactor", None),
-                Phase=output.get("Phase", None),
-                Energy=output.get("Energy", None),
-                EnergyNR=output.get("EnergyNR", output.get("Energy_NR", None)),
-                ReverseEnergy=output.get("ReverseEnergy", None),
-                ReverseEnergyNR=output.get("ReverseEnergyNR", output.get("ReverseEnergy_NR", None)),
-                Load=output.get("Load", None),
-            )
-            outputs.append(state)
-        return outputs
-
-    def _set_outputs(self, actions: dict) -> None:
-        outputs = []
-        for id, action in actions.items():
-            outputs.append({"ID": id, "Action": action})
-
-        body = {"Outputs": outputs}
-
-        self._post(body)
-
-        # TODO verify response action
+            raise CommunicationError("Response does not contain valid json") from None

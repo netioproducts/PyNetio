@@ -1,28 +1,35 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-## [2.0.0] - 2026-08-12
-Big maintenance release. The package now works on current Python versions and
-current devices.
+## [2.0.0] - 2026-08-13
+Maintenance release: current Python versions, current devices, and inputs.
 
-### Fixed
- - The CLI with new versions of python.
- - `INFO` command for new device versions (5.x)
- - `EnergyNR` and `ReverseEnergyNR` fields
- - The message for an invalid output number.
- - The example configuration file.
-
-### Changed
- - List of active demo devices in test suite
- - **Python 3.11 or newer is required.** Python 3.7 to 3.10 have all reached
-   end of life.
- - Removed `pyopenssl` from dependencies.
- - Package metadata moved to the `[project]` table (PEP 621).
- - Update Readme and examples.
+### Breaking
+ - Python 3.11 or newer is required.
+ - `OUTPUT.Energy_NR` and `OUTPUT.ReverseEnergy_NR` are now `EnergyNR` and
+   `ReverseEnergyNR`. The old names never held a value.
+ - A `Device` subclass now provides `init`, `get_info`, `get_outputs`,
+   `get_inputs` and `_set_outputs`, and calls `super().__init__()`.
 
 ### Added
+ - Reading inputs: `get_inputs`, `get_input`, `get_inputs_filtered` and
+   `NumInputs`. Inputs are read only.
+ - `INPUTS` command, also `DI`.
  - `Netio.__version__`.
  - Offline tests.
+
+### Changed
+ - Dropped the `pyopenssl` dependency.
+ - Package metadata moved to the `[project]` table (PEP 621).
+ - Publishing happens on a version tag, not on every push to master.
+ - Updated demo device list, README and examples.
+
+### Fixed
+ - The CLI on current Python versions.
+ - `INFO` command on firmware 5.x.
+ - `EnergyNR` and `ReverseEnergyNR` were always empty.
+ - The message for an invalid output number.
+ - The example configuration file.
 
 ## [1.0.13] - 2023-09-21
 ### Fixed

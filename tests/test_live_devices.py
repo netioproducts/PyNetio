@@ -54,3 +54,21 @@ def test_read_and_switch_a_real_device(demo_device: Netio):
     finally:
         # leave the demo device the way we found it
         demo_device.set_output(1, Netio.ACTION.ON if was_on else Netio.ACTION.OFF)
+
+
+def test_read_the_inputs_of_a_real_device(demo_device: Netio):
+    """
+    Read the inputs, on the devices that have any.
+
+    Only some models have inputs, and no sensor is connected to the demo
+    devices, so the temperature and the humidity come back empty.
+    """
+    inputs = demo_device.get_inputs()
+
+    assert len(inputs) == demo_device.NumInputs
+    assert [input.ID for input in inputs] == list(range(1, demo_device.NumInputs + 1))
+
+    for reading in inputs:
+        assert reading.State in (0, 1)
+        assert reading.S0Counter >= 0
+        assert reading.TemperatureC is None, 'demo devices have no sensor connected'

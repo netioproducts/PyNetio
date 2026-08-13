@@ -11,7 +11,7 @@ import sys
 import traceback
 
 from . import Netio, __version__
-from .exceptions import NetioException
+from .exceptions import NetioException, UnknownInputId, UnknownOutputId
 from typing import List
 from urllib.parse import urlparse, urlunparse
 
@@ -41,9 +41,10 @@ def get_arg(arg, config, name, env_name, section, default):
     """
     argument is looked up in this order:
      1. argument itself
-     2. specified section
-     3. DEFAULT section
-     4. param default
+     2. environment variable
+     3. specified section
+     4. DEFAULT section
+     5. param default
     """
     if arg == default:
         if env_name and env_name in os.environ:
@@ -54,32 +55,38 @@ def get_arg(arg, config, name, env_name, section, default):
     return arg
 
 
-def get_ids(id_strs: List[str], num_outputs: int) -> List[int]:
+def get_ids(id_strs: List[str], count: int, name: str = 'output') -> List[int]:
     """
     Generate a list of integer IDs from list of strings.
     The list can either contain one string "ALL" or an individual IDs
 
+    `name` is the word used in error messages, so the same code can pick
+    outputs and inputs.
+
     >> get_ids(["ALL"], 4)
     [1, 2, 3, 4]
     """
-    all_ids = range(1, num_outputs + 1)
-    all_outputs_mode = False
-    individual_outputs_mode = False
+    if count == 0:
+        raise NetioException(f"Device has no {name}s")
+
+    all_ids = range(1, count + 1)
+    all_mode = False
+    individual_mode = False
     result = []
 
     for id_str in id_strs:
         if id_str.lower() == 'all':
-            if individual_outputs_mode:
-                raise NetioException("Expecting either individual outputs IDs or 'ALL'")
-            all_outputs_mode = True
+            if individual_mode:
+                raise NetioException(f"Expecting either individual {name} IDs or 'ALL'")
+            all_mode = True
             result = list(all_ids)
         elif id_str.isdecimal() and int(id_str) in all_ids:
-            if all_outputs_mode:
-                raise NetioException("Expecting either individual outputs IDs or 'ALL'")
-            individual_outputs_mode = True
+            if all_mode:
+                raise NetioException(f"Expecting either individual {name} IDs or 'ALL'")
+            individual_mode = True
             result.append(int(id_str))
         else:
-            raise NetioException(f"Invalid output ID '{id_str}', valid range is 1-{num_outputs} or 'ALL'")
+            raise NetioException(f"Invalid {name} ID '{id_str}', valid range is 1-{count} or 'ALL'")
 
     return result
 
@@ -92,10 +99,9 @@ def get_output_actions(ids_and_actions, num_outputs):
 
     return dictionary containing ID: ACTION pairs
     """
-    max_id = num_outputs + 1
-    all_ids = range(1, max_id)
-    all_outputs_mode = False
-    individual_outputs_mode = False
+    all_ids = range(1, num_outputs + 1)
+    all_mode = False
+    individual_mode = False
     result = {}
 
     if len(ids_and_actions) % 2 != 0:
@@ -106,15 +112,15 @@ def get_output_actions(ids_and_actions, num_outputs):
         id_str, action_str = pair
 
         if id_str.lower() == "all":
-            if individual_outputs_mode:
-                raise NetioException("Expecting either individual outputs IDs or 'ALL'")
-            all_outputs_mode = True
+            if individual_mode:
+                raise NetioException("Expecting either individual output IDs or 'ALL'")
+            all_mode = True
             action = str2action(action_str)
-            result = dict(zip(all_ids, [action] * num_outputs))
+            result = dict.fromkeys(all_ids, action)
         elif id_str.isdecimal() and int(id_str) in all_ids:
-            if all_outputs_mode:
-                raise NetioException("Expecting either individual outputs IDs or 'ALL'")
-            individual_outputs_mode = True
+            if all_mode:
+                raise NetioException("Expecting either individual output IDs or 'ALL'")
+            individual_mode = True
             id = int(id_str)
             if id in result:
                 raise NetioException("Multiple actions given for id '{}' but expecting only one".format(id))
@@ -152,8 +158,10 @@ def load_config(args):
     args.no_cert_warning = get_arg(args.no_cert_warning, config, 'no_cert_warning', None, u.netloc, False)
 
     # resolve the path of cert relative to configuration path
+    # an empty `cert =` in the config switches verification off
     basedir = os.path.dirname(args.conf) if args.conf else os.path.dirname(os.path.curdir)
-    args.cert = args.cert if isinstance(args.cert, bool) else os.path.join(basedir, args.cert)
+    if not isinstance(args.cert, bool):
+        args.cert = os.path.join(basedir, args.cert) if args.cert else False
 
     return args
 
@@ -180,12 +188,17 @@ def parse_args():
     command_parser = parser.add_subparsers(metavar="COMMAND", help="device command")
     command_parser.required = True
 
+    # options shared by the commands that print a table
+    table_options = argparse.ArgumentParser(add_help=False)
+    table_options.add_argument("-d", "--delimiter", action="store", dest="delim", default="\t", help='column delimiter')
+    table_options.add_argument("--no-header", action="store_true", help='don\'t print column description')
+
     # GET command subparser
-    get_parser = command_parser.add_parser("get", help="GET output state", aliases=['GET', 'G', 'g'])
+    get_parser = command_parser.add_parser(
+        "get", help="GET output state", aliases=['GET', 'G', 'g'], parents=[table_options]
+    )
     get_parser.add_argument('id', metavar='ID', nargs='*', default=['ALL'], help='Output ID. All if not specified')
     get_parser.set_defaults(func=command_get)
-    get_parser.add_argument("-d", "--delimiter", action="store", dest="delim", default="\t", help='')
-    get_parser.add_argument("--no-header", action="store_true", help='don\'t print column description')
     get_parser.add_argument("--action-int", action="store_true", help='print action as integer')
 
     # SET command subparser
@@ -200,6 +213,13 @@ def parse_args():
     # INFO command subparser
     info_parser = command_parser.add_parser("info", help="show device info", aliases=['INFO', 'I', 'i'])
     info_parser.set_defaults(func=command_info)
+
+    # INPUTS command subparser
+    inputs_parser = command_parser.add_parser(
+        "inputs", help="GET input state", aliases=['INPUTS', 'DI', 'di'], parents=[table_options]
+    )
+    inputs_parser.add_argument('id', metavar='ID', nargs='*', default=['ALL'], help='Input ID. All if not specified')
+    inputs_parser.set_defaults(func=command_inputs)
 
     return parser.parse_args()
 
@@ -250,21 +270,40 @@ def command_set(device: Netio, args: argparse.Namespace) -> None:
     device.set_outputs(actions)
 
 
+def _print_table(header: tuple, rows: list, args: argparse.Namespace) -> None:
+    """ Print one row per item, with an optional header row """
+    if not args.no_header:
+        print(*header, sep=args.delim)
+    for row in rows:
+        print(*row, sep=args.delim)
+
+
 def command_get(device: Netio, args: argparse.Namespace) -> None:
     """ Print the state of the output and exit """
 
-    # init because we need to know NumOutputs so we can generate id list for "ALL"
-    # This initialization could be skipped, but that would require different handling for 'all' parameter
-    device.init()
+    # one read of the device gives both the id range for "ALL" and the states
+    outputs = device.get_outputs()
+    ids = get_ids(args.id, len(outputs))
+    picked = device._pick(outputs, ids, 'output', UnknownOutputId)
 
-    ids = get_ids(args.id, device.NumOutputs)  # returns single or range
-    outputs = list(device.get_outputs_filtered(ids))
+    rows = [
+        (o.ID, o.State, o.Action.value if args.action_int else o.Action.name,
+         o.Delay, o.Current, o.PowerFactor, o.Load, o.Energy, o.Name)
+        for o in picked
+    ]
+    _print_table(('id', 'State', 'Action', 'Delay', 'Current', 'PFactor', 'Load', 'Energy', 'Name'), rows, args)
 
-    if not args.no_header:
-        print('id', 'State', 'Action', 'Delay', 'Current', 'PFactor', 'Load', 'Energy', 'Name', sep=args.delim)
-    for o in outputs:
-        action = o.Action.name if not args.action_int else o.Action.value
-        print(o.ID, o.State, action, o.Delay, o.Current, o.PowerFactor, o.Load, o.Energy, o.Name, sep=args.delim)
+
+def command_inputs(device: Netio, args: argparse.Namespace) -> None:
+    """ Print the state of the inputs and exit """
+
+    # one read of the device gives both the id range for "ALL" and the states
+    inputs = device.get_inputs()
+    ids = get_ids(args.id, len(inputs), 'input')
+    picked = device._pick(inputs, ids, 'input', UnknownInputId)
+
+    rows = [(i.ID, i.State, i.S0Counter, i.TemperatureC, i.TemperatureF, i.Humidity, i.Name) for i in picked]
+    _print_table(('id', 'State', 'S0Counter', 'TempC', 'TempF', 'Humidity', 'Name'), rows, args)
 
 
 def _print_values(values: dict, indent: str) -> None:

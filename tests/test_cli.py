@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from Netio import Netio
-from Netio.cli import command_info, get_ids, get_output_actions, load_config, str2action
+from Netio.cli import command_info, command_inputs, get_ids, get_output_actions, load_config, str2action
 from Netio.exceptions import NetioException
 
 EXAMPLE_CONFIG = Path(__file__).parents[1] / 'examples' / 'netio.example.ini'
@@ -77,12 +77,7 @@ def test_output_and_action_pairs_that_are_not_allowed(given):
 
 
 def test_the_info_command_prints_every_kind_of_section(make_device, response_8qs, capsys):
-    """
-    Firmware 5.x sends PAB, Watchdogs and Rules as lists.
-
-    The command used to treat every section as name and value pairs, so it
-    failed on all current devices.
-    """
+    """Firmware 5.x sends PAB, Watchdogs and Rules as lists, not name and value pairs."""
     command_info(make_device(response_8qs), args=None)
 
     printed = capsys.readouterr().out
@@ -103,6 +98,26 @@ def test_the_info_command_on_a_device_with_fewer_sections(make_device, response_
     assert 'GlobalMeasure' not in printed
 
 
+def test_the_inputs_command_prints_one_row_per_input(make_device, response_4pz, capsys):
+    args = argparse.Namespace(id=['ALL'], delim='\t', no_header=False)
+
+    command_inputs(make_device(response_4pz), args)
+
+    lines = capsys.readouterr().out.splitlines()
+
+    assert lines[0].split('\t') == ['id', 'State', 'S0Counter', 'TempC', 'TempF', 'Humidity', 'Name']
+    assert lines[1].split('\t') == ['1', '0', '0', 'None', 'None', 'None', 'Input 1']
+    assert len(lines) == 3
+
+
+def test_asking_for_inputs_on_a_device_that_has_none(make_device, response_2pz):
+    """Better to say so than to print an empty table."""
+    args = argparse.Namespace(id=['ALL'], delim='\t', no_header=False)
+
+    with pytest.raises(NetioException):
+        command_inputs(make_device(response_2pz), args)
+
+
 def config_args(device: str) -> argparse.Namespace:
     """Build the arguments the way the command line parser would."""
     return argparse.Namespace(
@@ -116,14 +131,21 @@ def config_args(device: str) -> argparse.Namespace:
 
 
 def test_the_example_config_file_can_be_read():
-    """
-    The config file we ship as an example has to be a valid one.
-
-    It used to end with a `password` line that had no value, so anyone who
-    followed the README got 'Failed reading config' and nothing else.
-    """
+    """The config file we ship as an example has to be a valid one."""
     args = load_config(config_args('http://powerpdu-8qs.netio-products.com/netio.json'))
 
     # picked up from the section named after the host
     assert args.user == 'netio'
     assert args.password == 'netio'
+
+
+def test_an_empty_cert_value_switches_verification_off():
+    """
+    `cert =` with no value means: do not check the certificate.
+
+    Joining the empty value onto the config directory instead would hand
+    requests a truthy path, and verification would stay on.
+    """
+    args = load_config(config_args('http://192.168.0.1/netio.json'))
+
+    assert args.cert is False

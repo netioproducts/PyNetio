@@ -46,6 +46,12 @@ def response_2pz() -> dict:
 
 
 @pytest.fixture
+def response_4pz() -> dict:
+    """A PowerDIN 4PZ, the demo device with two inputs."""
+    return load_response('powerdin_4pz')
+
+
+@pytest.fixture
 def make_device(requests_mock):
     """
     Build a Netio device that talks to a mocked response instead of a real one.

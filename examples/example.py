@@ -16,7 +16,7 @@ AUTH = ('netio', 'netio')
 n = Netio(URL, auth_rw=AUTH, timeout=10)
 
 print(n)  # <Netio PowerPDU-EB [24A42C3992EB]>
-print(f'{n.NumOutputs} outputs')
+print(f'outputs: {n.NumOutputs}, inputs: {n.NumInputs}')
 
 # Read every output. Devices that do not measure power leave those fields empty,
 # so always check for None before using them.
@@ -35,3 +35,12 @@ n.set_output(1, Netio.ACTION.ON if first.State == 1 else Netio.ACTION.OFF)
 # Several outputs at once. There is no delay between them, so be careful with
 # heavy loads.
 n.set_outputs({1: Netio.ACTION.NOCHANGE, 2: Netio.ACTION.NOCHANGE})
+
+# Inputs are read the same way as outputs, but they cannot be switched. Only
+# some models have them, and the list is empty on the models that do not.
+# Temperature and humidity are empty unless a sensor is connected.
+for input in n.get_inputs():
+    contact = 'closed' if input.State == 1 else 'open'
+    pulses = f'{input.S0Counter:>8} pulses' if input.S0Counter is not None else 'no counter'
+    temperature = f'{input.TemperatureC} C' if input.TemperatureC is not None else 'no sensor'
+    print(f'  input {input.ID}: {contact:6s}  {pulses}  {temperature:10s}  {input.Name}')
