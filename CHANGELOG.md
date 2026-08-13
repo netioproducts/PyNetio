@@ -1,6 +1,11 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [2.0.1] - 2026-08-13
+### Changed
+ - Updated locked dependencies (certifi, charset-normalizer and friends).
+ - README shows installation with poetry and uv.
+
 ## [2.0.0] - 2026-08-13
 Maintenance release: current Python versions, current devices, and inputs.
 

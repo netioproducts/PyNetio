@@ -1,6 +1,6 @@
 [project]
 name = "Netio"
-version = "2.0.0"
+version = "2.0.1"
 description = "Interface to control NETIO Products devices"
 authors = [{ name = "Adam Verner", email = "averner@netio.eu" }]
 readme = "README.md"
