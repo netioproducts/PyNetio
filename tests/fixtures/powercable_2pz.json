@@ -1,0 +1,71 @@
+{
+  "Agent": {
+    "Model": "2PZ",
+    "DeviceName": "PowerCable-2PZ",
+    "MAC": "24:A4:2C:3A:58:75",
+    "SerialNumber": "24A42C3A5875",
+    "JSONVer": "2.6",
+    "Time": "2026-08-12T14:51:36+0100",
+    "Uptime": 60024,
+    "Version": "5.3.1",
+    "OemID": 800,
+    "VendorID": 0,
+    "NumOutputs": 2,
+    "NumInputs": 0
+  },
+  "Outputs": [
+    {
+      "ID": 1,
+      "Name": "Power output 1",
+      "State": 1,
+      "Action": 6,
+      "Delay": 5000
+    },
+    {
+      "ID": 2,
+      "Name": "Power output 2",
+      "State": 1,
+      "Action": 6,
+      "Delay": 5000
+    }
+  ],
+  "PAB": [],
+  "Watchdogs": [
+    {
+      "Name": "google_pinger",
+      "Enabled": false,
+      "Fail": false,
+      "LastStatus": false,
+      "Timestamp": 0
+    },
+    {
+      "Name": "CR01_WDT",
+      "Enabled": true,
+      "Fail": false,
+      "LastStatus": true,
+      "Timestamp": 1786546270
+    }
+  ],
+  "Rules": [
+    {
+      "Name": "CR01_RULE",
+      "Enabled": false,
+      "Result": null
+    },
+    {
+      "Name": "CR02_RULE",
+      "Enabled": false,
+      "Result": null
+    },
+    {
+      "Name": "CR03_RULE",
+      "Enabled": false,
+      "Result": null
+    },
+    {
+      "Name": "CR13_RULE",
+      "Enabled": false,
+      "Result": null
+    }
+  ]
+}

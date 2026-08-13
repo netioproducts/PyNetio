@@ -27,6 +27,14 @@ Changelog = "https://github.com/netioproducts/PyNetio/blob/master/CHANGELOG.md"
 [project.scripts]
 Netio = "Netio.cli:main"
 
+[tool.pytest.ini_options]
+# Tests that need a real device are skipped unless you ask for them
+# with `pytest -m live`.
+addopts = "-m 'not live'"
+markers = [
+    "live: talks to a real NETIO demo device over the internet",
+]
+
 [tool.poetry]
 # Without this, poetry-core auto-detects the package and lowercases it to
 # `netio/`, which breaks `import Netio` on a case sensitive filesystem.

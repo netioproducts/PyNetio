@@ -1,0 +1,159 @@
+{
+  "Agent": {
+    "Model": "8QS",
+    "DeviceName": "PowerPDU-EB",
+    "MAC": "24:A4:2C:39:92:EB",
+    "SerialNumber": "24A42C3992EB",
+    "JSONVer": "2.6",
+    "Time": "2026-08-12T14:51:22+0100",
+    "Uptime": 560,
+    "Version": "5.3.1",
+    "OemID": 600,
+    "VendorID": 0,
+    "NumOutputs": 8,
+    "NumInputs": 1
+  },
+  "GlobalMeasure": {
+    "Voltage": 241.61,
+    "TotalCurrent": 0,
+    "OverallPowerFactor": 1.0,
+    "TotalPowerFactor": 1.0,
+    "OverallPhase": 0.0,
+    "TotalPhase": 0.0,
+    "TotalEnergy": 52225,
+    "TotalReverseEnergy": 756,
+    "TotalEnergyNR": 176907,
+    "TotalReverseEnergyNR": 59797,
+    "TotalLoad": 0,
+    "EnergyStart": "2021-04-15T14:08:20+0100"
+  },
+  "Outputs": [
+    {
+      "ID": 1,
+      "Name": "Dream Machine",
+      "State": 1,
+      "Action": 6,
+      "Delay": 5000,
+      "Current": 0,
+      "PowerFactor": 1.0,
+      "Phase": 0.0,
+      "Energy": 43078,
+      "ReverseEnergy": 646,
+      "EnergyNR": 154263,
+      "ReverseEnergyNR": 66452,
+      "Load": 0,
+      "EnergyStart": "2021-04-15T14:08:20+0100"
+    },
+    {
+      "ID": 2,
+      "Name": "Power output 2",
+      "State": 1,
+      "Action": 6,
+      "Delay": 5000
+    },
+    {
+      "ID": 3,
+      "Name": "Power output 3",
+      "State": 0,
+      "Action": 6,
+      "Delay": 5000
+    },
+    {
+      "ID": 4,
+      "Name": "Power output 4",
+      "State": 1,
+      "Action": 6,
+      "Delay": 5000
+    },
+    {
+      "ID": 5,
+      "Name": "Power output 5",
+      "State": 1,
+      "Action": 6,
+      "Delay": 5000
+    },
+    {
+      "ID": 6,
+      "Name": "Power output 6",
+      "State": 0,
+      "Action": 6,
+      "Delay": 5000
+    },
+    {
+      "ID": 7,
+      "Name": "Power output 7",
+      "State": 0,
+      "Action": 6,
+      "Delay": 5000
+    },
+    {
+      "ID": 8,
+      "Name": "Power output 8",
+      "State": 1,
+      "Action": 6,
+      "Delay": 5000
+    }
+  ],
+  "Inputs": [
+    {
+      "ID": 1,
+      "Name": "Input 1",
+      "State": 1,
+      "S0Counter": 1246811,
+      "TemperatureC": 999.0,
+      "TemperatureF": 999.0,
+      "Humidity": 999
+    }
+  ],
+  "PAB": [
+    {
+      "Type": "RANGE",
+      "Name": "CR03_PAB",
+      "Enabled": false,
+      "In": false
+    }
+  ],
+  "Watchdogs": [
+    {
+      "Name": "google_pinger",
+      "Enabled": false,
+      "Fail": false,
+      "LastStatus": false,
+      "Timestamp": 0
+    },
+    {
+      "Name": "CR01_WDT",
+      "Enabled": false,
+      "Fail": false,
+      "LastStatus": false,
+      "Timestamp": 0
+    }
+  ],
+  "Rules": [
+    {
+      "Name": "CR01_RULE",
+      "Enabled": false,
+      "Result": null
+    },
+    {
+      "Name": "CR02_RULE",
+      "Enabled": false,
+      "Result": null
+    },
+    {
+      "Name": "CR03_RULE",
+      "Enabled": false,
+      "Result": null
+    },
+    {
+      "Name": "CR13_RULE",
+      "Enabled": false,
+      "Result": null
+    },
+    {
+      "Name": "2 OFFafter10Sec",
+      "Enabled": false,
+      "Result": null
+    }
+  ]
+}
