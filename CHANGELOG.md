@@ -1,6 +1,10 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+## [2.0.2] - 2026-10-26
+### Changed
+ - Updated dependencies.
+
 ## [2.0.1] - 2026-08-13
 ### Changed
  - Updated locked dependencies (certifi, charset-normalizer and friends).
